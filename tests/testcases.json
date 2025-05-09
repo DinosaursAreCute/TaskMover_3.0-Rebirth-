@@ -1,0 +1,29 @@
+{
+  "test_cases": [
+    {
+      "name": "Load Settings",
+      "description": "Ensure default settings are created if no settings file exists.",
+      "expected": {
+        "theme": "flatly",
+        "developer_mode": false
+      }
+    },
+    {
+      "name": "Save Settings",
+      "description": "Ensure settings are saved to the correct file.",
+      "input": {
+        "theme": "darkly",
+        "developer_mode": true
+      },
+      "expected": "Settings file exists and contains the correct data."
+    },
+    {
+      "name": "Create Dummy Files",
+      "description": "Ensure dummy files are created in the base directory.",
+      "input": {
+        "base_directory": "~/default_dir/test_dummy_files"
+      },
+      "expected": "Dummy files exist in the specified directory."
+    }
+  ]
+}
