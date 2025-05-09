@@ -1,4 +1,7 @@
-# TaskMover
+# FileMover(Legacy)
+
+First POC version of the fileMover
+
 TaskMover is a Python-based file organization tool that allows users to define rules for organizing files in a directory. It supports features like pattern matching, file moving, unzipping, and a graphical user interface for managing rules.
 
 ## Features
