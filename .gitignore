@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+env/
+*.env
+
+# Logs
+*.log
+*.txt
+
+# Config and settings
+default_dir/
+config/
+settings.yml
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE-specific files
+.vscode/
+.idea/
+*.iml
+
+# Python cache
+*.egg-info/
+*.egg
+*.whl
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.~lock.*
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
