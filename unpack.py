@@ -9,6 +9,16 @@ from tkinter import messagebox, filedialog, Menu
 import yaml
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
+import sys
+import subprocess
+
+# Ensure required modules are installed
+required_modules = ['colorlog', 'ttkbootstrap', 'pyyaml']
+for module in required_modules:
+    try:
+        __import__(module)
+    except ImportError:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', module])
 
 # Configure logging with colorlog
 handler = colorlog.StreamHandler()
@@ -51,14 +61,14 @@ def load_rules(config_path, fallback_path):
         return create_default_rules(config_path)
 
 def create_default_rules(config_path):
+    default_dir = os.path.expanduser("~/default_dir")
     default_rules = {
-        "9.2 - DialogEngine": {"patterns": ["dialogengine*.zip", "dialogengine"], "path": "", "unzip": True, "active": True},
-        "9.2 - Launcher": {"patterns": ["launcher*.zip", "launcher"], "path": "", "unzip": True, "active": True},
-        "9.2 - TelegramClient": {"patterns": ["telegramclient*.zip", "telegramclient"], "path": "", "unzip": True, "active": True},
-        "9.2 - CoPilot": {"patterns": ["copilot*.zip", "copilot"], "path": "", "unzip": True, "active": True},
-        "9.2 - UDM": {"patterns": ["udm*.zip", "udm"], "path": "", "unzip": True, "active": True},
-        "9.2 - VoiceBrowser": {"patterns": ["voicebrowser*.zip", "voicebrowser"], "path": "", "unzip": True, "active": True}
+        "Pictures": {"patterns": ["*.jpg", "*.jpeg", "*.png", "*.gif"], "path": os.path.join(default_dir, "Pictures"), "unzip": False, "active": True},
+        "Documents": {"patterns": ["*.pdf", "*.docx", "*.txt"], "path": os.path.join(default_dir, "Documents"), "unzip": False, "active": True},
+        "Videos": {"patterns": ["*.mp4", "*.mkv", "*.avi"], "path": os.path.join(default_dir, "Videos"), "unzip": False, "active": True},
+        "Archives": {"patterns": ["*.zip", "*.rar"], "path": os.path.join(default_dir, "Archives"), "unzip": True, "active": True},
     }
+    os.makedirs(default_dir, exist_ok=True)
     save_rules(config_path, default_rules)
     return default_rules
 
@@ -136,19 +146,26 @@ def unzip_file(zip_path, extract_to):
         logger.error(f"Failed to unzip '{zip_path}': Bad zip file")
 
 def browse_path(path_var):
+    logger.info("Opening directory selection dialog.")
     selected_path = filedialog.askdirectory()
     if selected_path:
         path_var.set(selected_path)
+        logger.info(f"Path selected: {selected_path}")
+    else:
+        logger.warning("No path selected.")
 
 def save_rule_immediate(rule_key, rule, listbox, path_widget, unzip_var, active_var, config_path):
+    logger.info(f"Saving rule '{rule_key}' immediately.")
     patterns = list(listbox.get(0, tk.END))
     path = path_widget.get()
     unzip = unzip_var.get()
     active = active_var.get()
     rules[rule_key] = {"patterns": patterns, "path": path, "unzip": unzip, "active": active}
+    logger.debug(f"Updated rule: {rules[rule_key]}")
     save_rules(config_path, rules)
 
 def cancel_rule_changes():
+    logger.info("Cancelling rule changes and reverting to the last saved state.")
     update_rule_list()
 
 def add_pattern(listbox, entry_widget):
@@ -156,19 +173,29 @@ def add_pattern(listbox, entry_widget):
     if pattern:
         listbox.insert(tk.END, pattern)
         entry_widget.delete(0, tk.END)
+        logger.info(f"Added pattern: {pattern}")
+    else:
+        logger.warning("Attempted to add an empty pattern.")
 
 def remove_selected_pattern(listbox):
     selected_indices = listbox.curselection()
-    for index in reversed(selected_indices):
-        listbox.delete(index)
+    if selected_indices:
+        for index in reversed(selected_indices):
+            removed_pattern = listbox.get(index)
+            listbox.delete(index)
+            logger.info(f"Removed pattern: {removed_pattern}")
+    else:
+        logger.warning("No pattern selected for removal.")
 
 def enable_all_rules():
+    logger.info("Enabling all rules.")
     for rule in rules.values():
         rule['active'] = True
     save_rules(config_path, rules)
     update_rule_list()
 
 def disable_all_rules():
+    logger.info("Disabling all rules.")
     for rule in rules.values():
         rule['active'] = False
     save_rules(config_path, rules)
@@ -286,17 +313,49 @@ def add_menubar(window):
     color_menu.add_command(label='Choose Text Color', command=lambda: choose_color("Text"))
     menubar.add_cascade(label='Colors', menu=color_menu)
 
+def check_first_run(config_directory, base_directory_var):
+    first_run_marker = os.path.join(config_directory, "first_run_marker.txt")
+    if not os.path.exists(first_run_marker):
+        logger.info("First run detected. Prompting user to select a base directory.")
+        messagebox.showinfo("Welcome", "It seems this is your first time running the program. Please select a base directory.")
+        selected_path = filedialog.askdirectory(title="Select Base Directory")
+        if selected_path:
+            base_directory_var.set(selected_path)
+            os.makedirs(selected_path, exist_ok=True)
+            logger.info(f"Base directory set to: {selected_path}")
+            with open(first_run_marker, 'w') as marker_file:
+                marker_file.write("This file marks that the program has been run before.")
+            logger.debug("First run marker file created.")
+        else:
+            logger.warning("No base directory selected. Using default directory.")
+            default_dir = os.path.expanduser("~/default_dir")
+            base_directory_var.set(default_dir)
+            os.makedirs(default_dir, exist_ok=True)
+            with open(first_run_marker, 'w') as marker_file:
+                marker_file.write("This file marks that the program has been run before.")
+            logger.debug("First run marker file created with default directory.")
+
 def main():
     global root, rules, base_directory, config_path, fallback_path, rule_frame, canvas, style
-    base_directory = "C:/users/nhu/dump_files/"
+    logger.info("Starting the File Organizer application.")
+
+    # Initialize Tkinter root before creating StringVar
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window until fully configured
+
+    base_directory_var = tk.StringVar(value=os.path.expanduser("~/default_dir"))
+    base_directory = base_directory_var.get()
     config_directory = os.path.join(base_directory, "config")
     os.makedirs(config_directory, exist_ok=True)
     config_path = os.path.join(config_directory, "rules.yml")
     fallback_path = os.path.join(config_directory, "fallback_conf.yml")
 
+    check_first_run(config_directory, base_directory_var)
+
+    base_directory = base_directory_var.get()
     rules = load_rules(config_path, fallback_path)
 
-    root = ttkb.Window(themename="flatly")
+    root.deiconify()  # Show the root window after configuration
     root.title("File Organizer")
     root.geometry("800x600")
     center_window(root)
