@@ -10,9 +10,9 @@ import colorlog  # Import colorlog for colored console logging
 logger = logging.getLogger("TaskMover")
 
 def center_window(window):
+    """Center a window on the screen."""
     window.update_idletasks()
-    width = window.winfo_width()
-    height = window.winfo_height()
+    width, height = window.winfo_width(), window.winfo_height()
     x = (window.winfo_screenwidth() // 2) - (width // 2)
     y = (window.winfo_screenheight() // 2) - (height // 2)
     window.geometry(f'{width}x{height}+{x}+{y}')
@@ -26,6 +26,7 @@ def add_menubar(window):
     menubar.add_cascade(label='File', menu=file_menu)
 
 def update_rule_list(rule_frame, rules, config_path, logger):
+    """Update the rule list UI."""
     for widget in rule_frame.winfo_children():
         widget.destroy()
 
@@ -33,9 +34,9 @@ def update_rule_list(rule_frame, rules, config_path, logger):
         frame = ttkb.Frame(rule_frame, padding=10, bootstyle="secondary")
         frame.pack(fill="x", pady=5, padx=10)
 
-        # Rule Title
-        rule_label = ttkb.Label(frame, text=f"{rule_key}", font=("Helvetica", 12, "bold"))
-        rule_label.pack(anchor="w", pady=5)
+        ttkb.Label(frame, text=f"{rule_key}", font=("Helvetica", 12, "bold")).pack(anchor="w", pady=5)
+        ttkb.Label(frame, text=f"Patterns: {', '.join(rule['patterns'])}", font=("Helvetica", 10)).pack(anchor="w", padx=10)
+        ttkb.Label(frame, text=f"Path: {rule['path']}", font=("Helvetica", 10)).pack(anchor="w", padx=10)
 
         # Rule Details with Switches
         details_frame = ttkb.Frame(frame)
@@ -60,13 +61,6 @@ def update_rule_list(rule_frame, rules, config_path, logger):
             command=lambda rk=rule_key, uv=unzip_var: toggle_unzip(rk, rules, config_path, uv.get(), logger)
         )
         unzip_switch.pack(side="left", padx=10)
-
-        # Patterns and Path
-        patterns_label = ttkb.Label(details_frame, text=f"Patterns: {', '.join(rule['patterns'])}", font=("Helvetica", 10))
-        patterns_label.pack(anchor="w", padx=10)
-
-        path_label = ttkb.Label(details_frame, text=f"Path: {rule['path']}", font=("Helvetica", 10))
-        path_label.pack(anchor="w", padx=10)
 
         # Edit and Delete Buttons
         actions_frame = ttkb.Frame(frame)
