@@ -1,3 +1,10 @@
+"""
+File operation utilities for the TaskMover application.
+
+This module provides functions for organizing files, moving files, and
+extracting zip files based on user-defined rules.
+"""
+
 import os
 import shutil
 import fnmatch
@@ -8,7 +15,14 @@ import logging
 logger = logging.getLogger("FileOperations")
 
 def organize_files(base_directory, rules, logger):
-    """Organize files in the base directory based on rules."""
+    """
+    Organize files in the base directory based on rules.
+
+    Args:
+        base_directory (str): Path to the base directory.
+        rules (dict): Dictionary of rules for organizing files.
+        logger (logging.Logger): Logger for logging updates.
+    """
     if not os.path.exists(base_directory):
         logger.error(f"Directory '{base_directory}' does not exist.")
         return
@@ -20,7 +34,15 @@ def organize_files(base_directory, rules, logger):
         move_file(os.path.join(base_directory, file_name), base_directory, rules, logger)
 
 def move_file(file_path, base_directory, rules, logger):
-    """Move a file to its target directory based on matching rules."""
+    """
+    Move a file to its target directory based on matching rules.
+
+    Args:
+        file_path (str): Path to the file to move.
+        base_directory (str): Path to the base directory.
+        rules (dict): Dictionary of rules for organizing files.
+        logger (logging.Logger): Logger for logging updates.
+    """
     file_name = os.path.basename(file_path)
     for folder, rule in rules.items():
         if rule.get('active') and any(fnmatch.fnmatch(file_name, pattern) for pattern in rule['patterns']):
@@ -32,6 +54,14 @@ def move_file(file_path, base_directory, rules, logger):
     logger.warning(f"No matching rule found for file '{file_name}'")
 
 def unzip_file(zip_path, extract_to, logger):
+    """
+    Extract a zip file to the specified directory.
+
+    Args:
+        zip_path (str): Path to the zip file.
+        extract_to (str): Directory to extract the contents to.
+        logger (logging.Logger): Logger for logging updates.
+    """
     try:
         zip_name = os.path.splitext(os.path.basename(zip_path))[0]
         target_dir = os.path.join(extract_to, zip_name)
@@ -45,7 +75,14 @@ def unzip_file(zip_path, extract_to, logger):
         messagebox.showerror("Error", f"Failed to unzip '{zip_path}': Bad zip file")
 
 def start_organization(base_directory, rules, logger):
-    """Organize files in the base directory with progress updates."""
+    """
+    Organize files in the base directory with progress updates.
+
+    Args:
+        base_directory (str): Path to the base directory.
+        rules (dict): Dictionary of rules for organizing files.
+        logger (logging.Logger): Logger for logging updates.
+    """
     if not os.path.exists(base_directory):
         logger.error(f"Directory '{base_directory}' does not exist.")
         return

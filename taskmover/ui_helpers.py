@@ -1,3 +1,10 @@
+"""
+Helper functions for managing the user interface of the TaskMover application.
+
+This module provides utilities for creating and managing UI components such as
+menus, rule lists, and settings windows.
+"""
+
 import logging
 import tkinter as tk
 from tkinter import Menu, simpledialog, colorchooser, messagebox, filedialog, ttk, Scrollbar  # Import correct modules for askstring, askcolor, and askdirectory
@@ -18,6 +25,7 @@ logger = logging.getLogger("TaskMover")
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
 
 def add_menubar(window):
+    """Add a basic menubar with a File menu to the given window."""
     menubar = Menu(window)
     window.config(menu=menubar)
 
@@ -26,7 +34,15 @@ def add_menubar(window):
     menubar.add_cascade(label='File', menu=file_menu)
 
 def update_rule_list(rule_frame, rules, config_path, logger):
-    """Update the rule list UI."""
+    """
+    Update the rule list UI.
+
+    Args:
+        rule_frame (tk.Frame): The frame containing the rule list.
+        rules (dict): Dictionary of rules to display.
+        config_path (str): Path to the configuration file.
+        logger (logging.Logger): Logger for logging updates.
+    """
     for widget in rule_frame.winfo_children():
         widget.destroy()
 
@@ -73,9 +89,20 @@ def update_rule_list(rule_frame, rules, config_path, logger):
         delete_button.pack(side="left", padx=10)
 
 def cancel_rule_changes():
+    """Display a message indicating that rule changes have been canceled."""
     messagebox.showinfo("Info", "Changes canceled.")
 
 def toggle_rule_active(rule_key, rules, config_path, active, logger):
+    """
+    Toggle the active state of a rule.
+
+    Args:
+        rule_key (str): The key of the rule to toggle.
+        rules (dict): Dictionary of rules.
+        config_path (str): Path to the configuration file.
+        active (bool): New active state.
+        logger (logging.Logger): Logger for logging updates.
+    """
     rules[rule_key]['active'] = bool(active)
     save_rules(config_path, rules)
     logger.info(f"Rule '{rule_key}' active state set to {bool(active)}.")
@@ -135,7 +162,15 @@ def add_menubar_with_settings(window, style, settings, save_settings, logger):
     logger.info("Menubar with settings added.")
 
 def open_settings_window(root, settings, save_settings, logger):
-    """Open the settings window."""
+    """
+    Open the settings window for modifying application settings.
+
+    Args:
+        root (tk.Tk): The root window.
+        settings (dict): Current application settings.
+        save_settings (function): Function to save updated settings.
+        logger (logging.Logger): Logger for logging updates.
+    """
     settings_window = tk.Toplevel(root)
     settings_window.attributes('-topmost', True)
     settings_window.title("Settings")
@@ -199,7 +234,7 @@ def open_settings_window(root, settings, save_settings, logger):
     components_frame.pack(fill="x", padx=10, pady=5)
 
     components = ["UI", "File Operations", "Rules", "Settings"]
-    component_vars = {component: tk.IntVar(value=1) for component in components}
+    component_vars = {component: tk.IntVar(value=settings.get("logging_components", {}).get(component, 0)) for component in components}
 
     for component, var in component_vars.items():
         ttkb.Checkbutton(components_frame, text=component, variable=var, bootstyle="info-switch").pack(anchor="w")
@@ -212,15 +247,29 @@ def open_settings_window(root, settings, save_settings, logger):
 
     accent_color_var = tk.StringVar(value=settings.get("accent_color", "#FFFFFF"))
     ttkb.Label(scrollable_frame, text="Accent Color:").pack(anchor="w", padx=10, pady=5)
-    ttkb.Button(scrollable_frame, text="Choose", command=lambda: choose_color_and_update("accent_color", accent_color_var)).pack(anchor="w", padx=10, pady=5)
+    ttkb.Button(scrollable_frame, text="Choose", command=lambda: choose_color_and_preview("accent_color", accent_color_var)).pack(anchor="w", padx=10, pady=5)
 
     background_color_var = tk.StringVar(value=settings.get("background_color", "#FFFFFF"))
     ttkb.Label(scrollable_frame, text="Background Color:").pack(anchor="w", padx=10, pady=5)
-    ttkb.Button(scrollable_frame, text="Choose", command=lambda: choose_color_and_update("background_color", background_color_var)).pack(anchor="w", padx=10, pady=5)
+    ttkb.Button(scrollable_frame, text="Choose", command=lambda: choose_color_and_preview("background_color", background_color_var)).pack(anchor="w", padx=10, pady=5)
 
     text_color_var = tk.StringVar(value=settings.get("text_color", "#000000"))
     ttkb.Label(scrollable_frame, text="Text Color:").pack(anchor="w", padx=10, pady=5)
-    ttkb.Button(scrollable_frame, text="Choose", command=lambda: choose_color_and_update("text_color", text_color_var)).pack(anchor="w", padx=10, pady=5)
+    ttkb.Button(scrollable_frame, text="Choose", command=lambda: choose_color_and_preview("text_color", text_color_var)).pack(anchor="w", padx=10, pady=5)
+
+    # Reset Colors Button
+    ttkb.Button(scrollable_frame, text="Reset Colors", bootstyle="warning", command=lambda: reset_colors(settings, save_settings, logger)).pack(anchor="w", padx=10, pady=5)
+
+    def choose_color_and_preview(setting, color_var):
+        color_code = colorchooser.askcolor(title=f"Choose {setting} Color")[1]
+        if color_code:
+            color_var.set(color_code)
+            if setting == "accent_color":
+                root.configure(accent_color=color_code)
+            elif setting == "background_color":
+                root.configure(bg=color_code)
+            elif setting == "text_color":
+                root.configure(fg=color_code)
 
     # Save and Cancel Buttons
     def save_changes():
@@ -231,7 +280,8 @@ def open_settings_window(root, settings, save_settings, logger):
         settings["accent_color"] = accent_color_var.get()
         settings["background_color"] = background_color_var.get()
         settings["text_color"] = text_color_var.get()
-        
+        settings["logging_components"] = {component: var.get() for component, var in component_vars.items()}
+
         # Corrected save_settings call to include required arguments
         try:
             root.style.theme_use(settings["theme"])
@@ -244,7 +294,7 @@ def open_settings_window(root, settings, save_settings, logger):
 
         # Apply new settings immediately
         root.style.theme_use(settings["theme"])
-        root.configure(bg=settings["background_color"])
+    
         logger.setLevel(settings["logging_level"])
 
         settings_window.destroy()
@@ -261,6 +311,13 @@ def open_settings_window(root, settings, save_settings, logger):
 # Helper functions to prevent premature closing or saving
 
 def browse_path_and_update(base_dir_var, logger):
+    """
+    Open a directory selection dialog and update the base directory variable.
+
+    Args:
+        base_dir_var (tk.StringVar): Variable to store the selected directory.
+        logger (logging.Logger): Logger for logging updates.
+    """
     selected_path = filedialog.askdirectory()
     if selected_path:
         base_dir_var.set(selected_path)
@@ -475,7 +532,7 @@ def execute_button(base_directory, rules, logger):
 
 def add_buttons_to_ui(root, rules, config_path, rule_frame, logger):
     """Add buttons for adding, removing, enabling, and disabling all rules to the existing UI."""
-    button_frame = ttkb.Frame(root)
+    button_frame = ttkb.Frame(root, style="warning.TFrame")
     button_frame.pack(fill="x", pady=10)
 
     ttkb.Button(button_frame, text="Add Rule", command=lambda: add_rule(rules, config_path, rule_frame, logger, root)).pack(side="left", padx=5)

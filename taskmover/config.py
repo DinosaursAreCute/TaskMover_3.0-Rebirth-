@@ -1,5 +1,14 @@
+"""
+Configuration management for the TaskMover application.
+
+This module provides functions for loading, saving, and applying application
+settings and rules.
+"""
+
 import os
 import yaml
+import logging
+from ttkbootstrap import Style
 
 def load_rules(config_path, fallback_path):
     """Load rules from a configuration file or fallback to a backup."""
@@ -22,7 +31,15 @@ def load_rules(config_path, fallback_path):
         raise RuntimeError(f"Failed to load rules: {e}")
 
 def create_default_rules(config_path):
-    """Create default rules and save them to the configuration file."""
+    """
+    Create default rules and save them to the configuration file.
+
+    Args:
+        config_path (str): Path to the configuration file.
+
+    Returns:
+        dict: Dictionary of default rules.
+    """
     default_dir = os.path.expanduser("~/default_dir")
     default_rules = {
         "Pictures": {"patterns": ["*.jpg", "*.png"], "path": os.path.join(default_dir, "Pictures"),"unzip":False, "active": True},
@@ -42,34 +59,28 @@ def save_rules(config_path, rules):
     except Exception as e:
         raise RuntimeError(f"Failed to save rules: {e}")
 
-def load_settings(logger=None):
-    """Load application settings from a configuration file."""
-    settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
-    default_settings = {
-        "theme": "flatly",
-        "developer_mode": False,
-        "accent_color": None,
-        "background_color": None,
-        "text_color": None,
-    }
-
+def load_settings(settings_path):
+    """Load settings from the settings file."""
     if not os.path.exists(settings_path):
-        if logger:
-            logger.warning(f"Settings file not found. Creating default settings at {settings_path}.")
-        save_settings(settings_path, default_settings)
-        return default_settings
+        return {
+            "base_directory": "",
+            "theme": "flatly",
+            "developer_mode": False,
+            "logging_level": "INFO",
+            "accent_color": "#FFFFFF",
+            "background_color": "#FFFFFF",
+            "text_color": "#000000",
+            "logging_components": {
+                "UI": 1,
+                "File Operations": 1,
+                "Rules": 1,
+                "Settings": 1
+            }
+        }
 
-    try:
-        with open(settings_path, "r") as file:
-            settings = yaml.safe_load(file)
-            if not isinstance(settings, dict):
-                raise ValueError("Invalid settings format")
-            return settings
-    except (yaml.YAMLError, ValueError) as e:
-        if logger:
-            logger.error(f"Failed to load settings: {e}. Reverting to default settings.")
-        save_settings(settings_path, default_settings)
-        return default_settings
+    with open(settings_path, "r") as file:
+        import yaml
+        return yaml.safe_load(file)
 
 def save_settings(settings_path, settings, logger=None):
     """Save application settings to a configuration file."""
@@ -83,6 +94,25 @@ def save_settings(settings_path, settings, logger=None):
         if logger:
             logger.error(f"Failed to save settings: {e}")
         raise RuntimeError(f"Failed to save settings: {e}")
+
+def apply_settings(root, settings, logger):
+    """Apply settings to the application."""
+    style = Style()
+    try:
+        style.theme_use(settings.get("theme", "flatly"))
+    except Exception as e:
+        logger.error(f"Failed to apply theme: {e}")
+
+    root.configure(bg=settings.get("background_color", "#FFFFFF"))
+    # Note: Tkinter root does not support 'fg' or 'accent_color' directly.
+    logger.setLevel(settings.get("logging_level", "INFO"))
+
+    # Apply logging component levels (if needed)
+    for component, enabled in settings.get("logging_components", {}).items():
+        if enabled:
+            logger.info(f"Logging enabled for {component}")
+        else:
+            logger.info(f"Logging disabled for {component}")
 
 def load_or_initialize_rules(config_path, fallback_path, logger=None):
     """Load rules from a configuration file or initialize default rules."""

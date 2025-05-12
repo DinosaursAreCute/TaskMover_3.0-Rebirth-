@@ -1,3 +1,10 @@
+"""
+Main application logic for the TaskMover application.
+
+This module initializes the application, sets up the user interface, and
+handles user interactions.
+"""
+
 import os
 import tkinter as tk
 import logging
@@ -25,7 +32,7 @@ def check_first_run(config_directory, base_directory_var, logger):
     first_run_marker = os.path.join(config_directory, "first_run_marker.txt")
     if not os.path.exists(first_run_marker):
         logger.info("First run detected. Prompting user to select a base directory.")
-        messagebox.showinfo("Welcome", "It seems this is your first time running the program. Please select a base directory. This will be used to your settings.")
+        messagebox.showinfo("Welcome", "It seems this is your first time running the program. Please select a base directory. This will be used to save your settings.")
         selected_path = filedialog.askdirectory(title="Select Base Directory")
         base_directory_var.set(selected_path or os.path.expanduser("~/default_dir"))
         os.makedirs(base_directory_var.get(), exist_ok=True)
@@ -67,7 +74,11 @@ def main(rules, logger):
     logger.info("Application exited successfully.")
 
 def setup_ui(root, base_path_var, rules, config_directory, style, settings, logger):
-    """Set up the main UI components."""
+    """Set up the user interface."""
+    # Apply settings on startup
+    from config import apply_settings
+    apply_settings(root, settings, logger)
+
     # Add Menubar
     add_menubar_with_settings(root, style, settings, save_settings, logger)
 
@@ -109,6 +120,7 @@ def browse_path(path_var, logger):
         logger.info(f"Base path updated to: {selected_path}")
 
 def open_developer_settings(root, settings, logger):
+    """Open the developer settings window."""
     dev_window = tk.Toplevel(root)
     dev_window.title("Developer Settings")
     dev_window.geometry("400x300")
@@ -134,6 +146,7 @@ def open_developer_settings(root, settings, logger):
     ttkb.Button(dev_window, text="Save", command=save_dev_settings).pack(pady=10)
 
 def add_rule(rules, config_directory, rule_frame, logger, root):
+    """Add a new rule to the rules dictionary."""
     rule_name = simpledialog.askstring("Add Rule", "Enter the name of the new rule:")
     if rule_name:
         if rule_name in rules:
@@ -146,6 +159,7 @@ def add_rule(rules, config_directory, rule_frame, logger, root):
             logger.info(f"Added new rule: {rule_name}")
 
 def remove_rule(rules, config_directory, rule_frame, logger):
+    """Remove an existing rule from the rules dictionary."""
     rule_name = simpledialog.askstring("Remove Rule", "Enter the name of the rule to remove:")
     if rule_name:
         if rule_name in rules:
@@ -158,6 +172,7 @@ def remove_rule(rules, config_directory, rule_frame, logger):
             logger.warning(f"Attempted to remove non-existent rule: {rule_name}")
 
 def delete_multiple_rules(rules, config_directory, logger, rule_frame, root):
+    """Delete multiple rules from the rules dictionary."""
     delete_window = tk.Toplevel(root)
     delete_window.title("Delete Rules")
     delete_window.geometry("400x500")
@@ -217,6 +232,7 @@ def create_dummy_files(base_directory, logger):
         messagebox.showerror("Error", f"An error occurred while creating dummy files: {e}")
 
 def add_menubar_with_settings(window, style, settings, save_settings, logger):
+    """Add a menubar with settings to the main window."""
     menubar = Menu(window)
     window.config(menu=menubar)
 
@@ -268,6 +284,7 @@ def choose_color(color_type, style, settings, save_settings, logger):
         logger.info(f"{color_type} color applied to the UI.")
 
 def edit_rule(rule_key, rules, config_directory, logger, rule_frame, root):
+    """Edit an existing rule in the rules dictionary."""
     edit_window = tk.Toplevel(root)
     edit_window.title(f"Edit Rule: {rule_key}")
     edit_window.geometry("400x300")
@@ -338,8 +355,11 @@ SOFTWARE.
     messagebox.showinfo("License Information", license_text)
 
 def run():
+    """
+    Main function to initialize and run the TaskMover application.
+    """
     logger = configure_logger()
-
+ 
     # Define configuration paths
     config_directory = os.path.expanduser("~/default_dir/config")
     ensure_directory_exists(config_directory, logger)
@@ -351,6 +371,9 @@ def run():
     # Load or initialize rules
     rules = load_or_initialize_rules(config_directory, fallback_path, logger)
 
+    # Load settings
+    settings = load_settings(settings_path)
+
     # --- Custom UI Setup ---
     root = ttkb.Window(themename="flatly")
     root.title("TaskMover")
@@ -358,9 +381,6 @@ def run():
 
     base_path_var = ttkb.StringVar(value=os.path.expanduser("~/default_dir"))
     style = ttkb.Style()  # Initialize style before using it
-
-    # Load settings
-    settings = load_settings(logger)
 
     # Load theme dynamically from settings
     if not isinstance(settings, dict):
@@ -373,7 +393,8 @@ def run():
     except Exception as e:
         logger.error(f"Failed to load theme '{theme_name}'. Falling back to default theme 'flatly'. Error: {e}")
         style.theme_use("flatly")
-
+    base_directory_var = tk.StringVar(value=os.path.expanduser("~/default_dir"))
+    check_first_run(os.path.expanduser("~/default_dir/config"), base_directory_var, logger)
     setup_ui(root, base_path_var, rules, config_directory, style, settings, logger)
     logger.info("Starting TaskMover application.")
 

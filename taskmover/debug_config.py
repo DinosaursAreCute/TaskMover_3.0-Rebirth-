@@ -1,3 +1,10 @@
+"""
+Debug configuration and utilities for the TaskMover application.
+
+This module provides debugging tools such as visual markers, debug lines,
+and widget highlighters for UI elements.
+"""
+
 # Debug configuration file for TaskMover
 
 # Toggle debugging logs for UI elements
@@ -14,6 +21,12 @@ enable_widget_highlighter = False
 
 # Debugging log function
 def debug_log(message):
+    """
+    Log a debug message if UI debug logs are enabled.
+
+    Args:
+        message (str): The debug message to log.
+    """
     if enable_ui_debug_logs:
         print(f"[DEBUG] {message}")
 
@@ -27,7 +40,14 @@ import tkinter as tk
 
 # Update draw_debug_lines to use the new toggle
 def draw_debug_lines(canvas, widget, draw_to_center=False):
-    """Draws colored lines around a widget and optionally to the center of the screen."""
+    """
+    Draw colored lines around a widget and optionally to the center of the screen.
+
+    Args:
+        canvas (tk.Canvas): Canvas to draw the lines on.
+        widget (tk.Widget): Widget to highlight.
+        draw_to_center (bool): Whether to draw lines to the screen center.
+    """
     if not enable_ui_visual_markers or not enable_debug_lines:
         return
 
@@ -60,7 +80,12 @@ def draw_debug_lines(canvas, widget, draw_to_center=False):
 
 # Update display_widget_names to use the new toggle
 def display_widget_names(widget_list):
-    """Display a simple UI window with a list of widget names and highlight selected elements."""
+    """
+    Display a UI window with a list of widget names and highlight selected elements.
+
+    Args:
+        widget_list (list): List of widget names to display.
+    """
     if not enable_ui_visual_markers or not enable_widget_highlighter:
         return
 

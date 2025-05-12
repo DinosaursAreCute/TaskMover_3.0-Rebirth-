@@ -1,3 +1,10 @@
+"""
+Shared utility functions for the TaskMover application.
+
+This module provides common utilities such as resetting colors, displaying
+license information, and browsing directories.
+"""
+
 import os
 import tkinter.filedialog
 from tkinter import messagebox
@@ -5,7 +12,14 @@ from tkinter import messagebox
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
 
 def reset_colors(settings, save_settings, logger):
-    """Reset all color settings to their default values."""
+    """
+    Reset all color settings to their default values.
+
+    Args:
+        settings (dict): Current application settings.
+        save_settings (function): Function to save updated settings.
+        logger (logging.Logger): Logger for logging updates.
+    """
     default_colors = {"accent_color": None, "background_color": None, "text_color": None}
     settings.update(default_colors)
     save_settings(settings_path, settings, logger)
@@ -13,7 +27,9 @@ def reset_colors(settings, save_settings, logger):
     messagebox.showinfo("Reset Colors", "All colors have been reset to their default values.")
 
 def show_license_info():
-    """Display the license information in a message box."""
+    """
+    Display the license information in a message box.
+    """
     license_text = """
 MIT License
 
@@ -40,7 +56,13 @@ SOFTWARE.
     messagebox.showinfo("License Information", license_text)
 
 def browse_path(path_var, logger):
-    """Browse and select a directory."""
+    """
+    Open a directory selection dialog and update the given path variable.
+
+    Args:
+        path_var (tk.StringVar): Variable to store the selected directory.
+        logger (logging.Logger): Logger for logging updates.
+    """
     selected_path = tkinter.filedialog.askdirectory()
     if selected_path:
         path_var.set(selected_path)
