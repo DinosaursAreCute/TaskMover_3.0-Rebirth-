@@ -59,6 +59,9 @@ def main(rules, logger):
 
 def setup_ui(root, base_path_var, rules, config_directory, style, settings, logger):
     """Set up the main UI components."""
+    # Import functions locally to avoid circular import
+    from taskmover.ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
+
     # Base Path Frame
     base_path_frame = ttkb.Frame(root, padding=10, bootstyle="primary")
     base_path_frame.pack(fill="x", pady=10, padx=10)

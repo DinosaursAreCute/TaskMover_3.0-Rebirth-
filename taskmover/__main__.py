@@ -42,11 +42,6 @@ def browse_path(base_path_var, logger):
 def run():
     logger = configure_logger()
 
-    # Check if a display is available
-    if not os.environ.get("DISPLAY"):
-        logger.error("No display found. Ensure you are running this application in an environment with GUI support.")
-        sys.exit("Error: No display found. This application requires a graphical environment.")
-
     # Define configuration paths
     config_directory = os.path.expanduser("~/default_dir/config")
     ensure_directory_exists(config_directory, logger)
@@ -72,8 +67,7 @@ def run():
     import tkinter as tk
     menubar = root.nametowidget(root.winfo_children()[0])
     help_menu = tk.Menu(menubar, tearoff=0)
-    help_menu.add_command(label="About", command=show_license_info)
-    menubar.add_cascade(label="Help", menu=help_menu)
+    
 
     # Base Path Frame
     base_path_var = ttkb.StringVar(value=os.path.expanduser("~/default_dir"))
