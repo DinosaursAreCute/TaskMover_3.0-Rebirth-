@@ -4,10 +4,12 @@ import logging
 from tkinter import Menu, filedialog, messagebox, simpledialog, colorchooser  # Import colorchooser for askcolor
 import yaml  # Import yaml to fix NameError
 import ttkbootstrap as ttkb
+
 from .config import load_rules, create_default_rules, save_rules, load_settings, save_settings
 from .file_operations import organize_files, move_file, start_organization  # Import move_file to fix NameError
 from .ui_helpers import center_window, add_menubar_with_settings, trigger_developer_function, update_rule_list, enable_all_rules, disable_all_rules, delete_rule, delete_multiple_rules, edit_rule  # Ensure these are imported
 from .logging_config import configure_logger
+from taskmover.rule_operations import add_rule
 
 def check_first_run(config_directory, base_directory_var, logger):
     """Check if this is the first run and prompt for base directory setup."""
@@ -68,10 +70,19 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     # Rule List and Buttons
     rule_frame = ttkb.Frame(root, padding=10, bootstyle="secondary")
     rule_frame.pack(fill="both", expand=True, padx=10, pady=10)
-    update_rule_list(rule_frame, rules, config_directory, logger)  # Removed extra 'root' argument
+    update_rule_list(rule_frame, rules, config_directory, logger)
+
+    # Buttons for rule operations
+    button_frame = ttkb.Frame(root, padding=10, bootstyle="secondary")
+    button_frame.pack(fill="x", padx=10, pady=5)
+
+    ttkb.Button(button_frame, text="Add Rule", bootstyle="success", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Remove Rule", bootstyle="danger", command=lambda: remove_rule(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Enable All Rules", bootstyle="primary", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Disable All Rules", bootstyle="warning", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
 
     # Menubar
-    add_menubar_with_settings(root, style, settings, save_settings, logger,base_directory=base_path_var.get())
+    add_menubar_with_settings(root, style, settings, save_settings, base_directory=base_path_var.get(), logger=logger)
 
 def browse_path(path_var, logger):
     """Browse and select a directory."""
@@ -106,7 +117,7 @@ def save_settings(settings, logger):
         yaml.dump(settings, file)
     logger.info("Settings saved successfully.")
 
-def open_developer_settings(root, settings, save_settings, logger):
+def open_developer_settings(root, settings, logger):
     dev_window = tk.Toplevel(root)
     dev_window.title("Developer Settings")
     dev_window.geometry("400x300")
@@ -119,7 +130,7 @@ def open_developer_settings(root, settings, save_settings, logger):
     ttkb.Label(dev_window, text="Developer Mode:").pack(anchor="w", padx=10)
     dev_mode_dropdown = ttkb.Combobox(dev_window, textvariable=dev_mode_var, values=["Enabled", "Disabled"], state="readonly")
     dev_mode_dropdown.pack(fill="x", padx=10, pady=5)
-
+    
     # Create Dummy Files Button
     ttkb.Button(dev_window, text="Create Dummy Files", bootstyle="info", command=lambda: create_dummy_files(settings.get("base_directory", "~/default_dir"), logger)).pack(pady=10)
 
@@ -140,7 +151,7 @@ def add_rule(rules, config_path, rule_frame, logger, root):
         else:
             rules[rule_name] = {"patterns": [], "path": "", "unzip": False, "active": True}
             save_rules(config_path, rules)
-            update_rule_list(rule_frame, rules, config_path, logger, root)
+            update_rule_list(rule_frame, rules, config_path, logger)
             logger.info(f"Added new rule: {rule_name}")
 
 def remove_rule(rules, config_path, rule_frame, logger):
@@ -266,7 +277,7 @@ def add_menubar_with_settings(window, style, settings, save_settings, logger, ba
 
     # Developer Settings
     dev_menu = Menu(settings_menu, tearoff=0)
-    dev_menu.add_command(label="Developer Settings", command=lambda: open_developer_settings(window, settings, save_settings, logger))
+    dev_menu.add_command(label="Developer Settings", command=lambda: open_developer_settings(window, settings, logger))
     settings_menu.add_cascade(label='Developer', menu=dev_menu)
 
     menubar.add_cascade(label="Settings", menu=settings_menu)
