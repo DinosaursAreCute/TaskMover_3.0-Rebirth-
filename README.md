@@ -8,8 +8,6 @@ TaskMover is a Python-based file organization tool that allows users to define r
 - Enable or disable rules dynamically.
 - Graphical user interface (GUI) for managing rules and configurations.
 - Customizable themes and colors.
-- Developer tools for testing and debugging.
-- Colorful, detailed test automation and logging.
 
 ## Requirements
 - Python 3.x
