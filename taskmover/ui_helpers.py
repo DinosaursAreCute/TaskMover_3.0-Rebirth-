@@ -4,8 +4,12 @@ from tkinter import Menu, simpledialog, colorchooser, messagebox, filedialog  # 
 import ttkbootstrap as ttkb
 import os
 
-from .config import save_rules
+from taskmover.app import reset_colors, show_license_info
+
+from taskmover.config import save_rules
 import colorlog  # Import colorlog for colored console logging
+from taskmover.file_operations import organize_files
+from taskmover.rule_operations import add_rule
 
 logger = logging.getLogger("TaskMover")
 
@@ -133,25 +137,30 @@ def add_menubar_with_settings(window, style, settings, save_settings, logger):
     for theme_name, theme_id, dots in themes:
         theme_menu.add_command(
             label=f"{theme_name}  {dots}",
-            command=lambda t=theme_id: change_theme(style, settings, save_settings, t)
+            command=lambda theme_id=theme_id: change_theme(style, settings, save_settings, theme_id, logger)
         )
 
     settings_menu.add_cascade(label="Themes", menu=theme_menu)
 
     # Color Settings
     color_menu = Menu(settings_menu, tearoff=0)
-    color_menu.add_command(label='Choose Accent Color', command=lambda: choose_color("Accent", style, settings, save_settings))
-    color_menu.add_command(label='Choose Background Color', command=lambda: choose_color("Background", style, settings, save_settings))
-    color_menu.add_command(label='Choose Text Color', command=lambda: choose_color("Text", style, settings, save_settings))
+    color_menu.add_command(label='Choose Accent Color', command=lambda: choose_color("Accent", style, settings, save_settings, logger))
+    color_menu.add_command(label='Choose Background Color', command=lambda: choose_color("Background", style, settings, save_settings, logger))
+    color_menu.add_command(label='Choose Text Color', command=lambda: choose_color("Text", style, settings, save_settings, logger))
+    color_menu.add_command(label='Reset Colors', command=lambda: reset_colors(settings, save_settings, logger))
     settings_menu.add_cascade(label='Colors', menu=color_menu)
 
     # Developer Settings
     dev_menu = Menu(settings_menu, tearoff=0)
-    dev_menu.add_command(label="Developer Settings", command=lambda: open_developer_settings(settings, save_settings, logger))
-    dev_menu.add_command(label="Trigger Developer Function", command=lambda: trigger_developer_function(logger))  # Add button to trigger function
+    dev_menu.add_command(label="Developer Settings", command=lambda: open_developer_settings(window, settings, save_settings, logger))
     settings_menu.add_cascade(label='Developer', menu=dev_menu)
 
     menubar.add_cascade(label="Settings", menu=settings_menu)
+
+    # Help Menu
+    help_menu = Menu(menubar, tearoff=0)
+    help_menu.add_command(label="License Information", command=show_license_info)  # Add License Information button
+    menubar.add_cascade(label="Help", menu=help_menu)
 
 def trigger_developer_function(base_directory, logger):
     logger.info("Developer function triggered.")
@@ -186,7 +195,7 @@ def apply_custom_style(style, settings, save_settings, custom_style):
     style.configure('TFrame', background=custom_style["background"])
     style.configure('TLabel', foreground=custom_style["foreground"])
     settings["custom_style"] = custom_style
-    save_settings(settings)
+    save_settings(settings,logger)
     logger.info(f"Applied custom style: {custom_style}")
 
 def open_developer_settings(settings, save_settings, logger):
@@ -222,7 +231,7 @@ def open_developer_settings(settings, save_settings, logger):
 
     def save_dev_settings():
         settings["developer_mode"] = dev_mode_var.get() == "Enabled"
-        save_settings(settings)
+        save_settings(settings,logger)
         logger.setLevel(logging_level_var.get())
         logger.info(f"Developer mode set to {dev_mode_var.get()}. Logging level set to {logging_level_var.get()}.")
         for component, var in component_vars.items():
@@ -231,10 +240,10 @@ def open_developer_settings(settings, save_settings, logger):
 
     ttkb.Button(dev_window, text="Save", command=save_dev_settings).pack(pady=10)
 
-def change_theme(style, settings, save_settings, theme_name):
+def change_theme(style, settings, save_settings, theme_name, logger):
     style.theme_use(theme_name)
     settings["theme"] = theme_name
-    save_settings(settings)
+    save_settings(settings,logger)
     logger.info(f"Theme changed to {theme_name}.")
 
 def choose_color(setting, style, settings, save_settings):
@@ -249,7 +258,7 @@ def choose_color(setting, style, settings, save_settings):
         elif setting == "Text":
             style.configure('TLabel', foreground=color_code)
         settings[f"{setting.lower()}_color"] = color_code
-        save_settings(settings)
+        save_settings(settings,logger)
         logger.info(f"{setting} color changed to {color_code}.")
 
 def delete_rule(rule_key, rules, config_path, logger, rule_frame):
@@ -317,3 +326,41 @@ def edit_rule(rule_key, rules, config_path, logger, rule_frame):
 
     ttkb.Button(edit_window, text="Save", command=save_changes).pack(pady=10)
     ttkb.Button(edit_window, text="Cancel", command=edit_window.destroy).pack(pady=5)
+
+def add_rule_button(root, rules, config_path, rule_frame, logger):
+    """Add a button to add new rules."""
+    ttkb.Button(root, text="Add Rule", command=lambda: add_rule(rules, config_path, rule_frame, logger, root)).pack(pady=5)
+
+def activate_all_button(rules, config_path, rule_frame, logger):
+    """Activate all rules."""
+    enable_all_rules(rules, config_path, rule_frame, logger)
+
+def deactivate_all_button(rules, config_path, rule_frame, logger):
+    """Deactivate all rules."""
+    disable_all_rules(rules, config_path, rule_frame, logger)
+
+def execute_button(base_directory, rules, logger):
+    """Execute the file organization process."""
+    if not base_directory or not os.path.exists(base_directory):
+        logger.error("Invalid or non-existent base directory.")
+        messagebox.showerror("Error", "Invalid or non-existent base directory.")
+        return
+
+    logger.info("Starting file organization process...")
+    try:
+        organize_files(base_directory, rules, logger)
+        messagebox.showinfo("Success", "File organization completed successfully.")
+        logger.info("File organization completed successfully.")
+    except Exception as e:
+        logger.error(f"Error during file organization: {e}")
+        messagebox.showerror("Error", f"An error occurred during file organization: {e}")
+
+def add_buttons_to_ui(root, rules, config_path, rule_frame, logger):
+    """Add buttons for adding, removing, enabling, and disabling all rules to the existing UI."""
+    button_frame = ttkb.Frame(root)
+    button_frame.pack(fill="x", pady=10)
+
+    ttkb.Button(button_frame, text="Add Rule", command=lambda: add_rule(rules, config_path, rule_frame, logger, root)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Remove Rule", command=lambda: delete_multiple_rules(rules, config_path, logger, rule_frame)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Enable All", command=lambda: enable_all_rules(rules, config_path, rule_frame, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Disable All", command=lambda: disable_all_rules(rules, config_path, rule_frame, logger)).pack(side="left", padx=5)

@@ -29,6 +29,8 @@ def create_default_rules(config_path):
 
 def save_rules(config_path, rules):
     """Save rules to the configuration file."""
+    config_directory = os.path.expanduser("~/default_dir/config")
+    config_path = os.path.join(config_directory, "rules.yml")
     try:
         with open(config_path, 'w') as file:
             yaml.dump(rules, file, default_flow_style=False)
