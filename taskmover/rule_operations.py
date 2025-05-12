@@ -1,6 +1,6 @@
 from tkinter import simpledialog, messagebox
 
-from taskmover.config import save_rules
+from .config import save_rules
 
 def add_rule(rules, config_path, rule_frame, logger, root):
     """Add a new rule to the rules dictionary."""

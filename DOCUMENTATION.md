@@ -1,25 +1,67 @@
 # TaskMover Documentation
 
-This document provides detailed information about the functions used in TaskMover, including their purposes, parameters, and usage.
+## What’s New in 2.0.0
+- Major UI and UX improvements for rule management and settings.
+- Full test automation for settings, dummy file creation, UI integration, themes, and color application.
+- Colorful, detailed test logging for all automated tests.
+- Expanded documentation and test case coverage.
+- Improved error handling and logging throughout the application.
+- Enhanced theme and color customization for the UI.
+- Added developer tools and advanced logging for debugging.
+- Improved compatibility with Windows and cross-platform environments.
 
----
+## Overview
+TaskMover is a file organization tool designed to help users manage and organize their files efficiently. It provides a user-friendly interface and customizable rules for file organization.
 
-## `app.py`
+## Quick Start Tutorial
+See the [README.md](./README.md) for a step-by-step tutorial on installing, launching, and using TaskMover.
 
-### `check_first_run(config_directory, base_directory_var, logger)`
-**Purpose**: Checks if the application is being run for the first time and prompts the user to select a base directory.
+## Features
+- Dynamic theme loading based on user settings.
+- Customizable file organization rules.
+- Developer mode for advanced debugging.
+- Integrated logging for better traceability.
+- Support for custom UI themes and colors.
+- Automated tests for all major features.
+
+## Setup
+1. Clone the repository.
+2. Install the required dependencies using `pip install -r requirements.txt`.
+3. Run the application using `python -m taskmover`.
+
+## Key Functions
+
+### `run()`
+**Description:**
+Main function to initialize and run the TaskMover application.
+
+**Key Steps:**
+1. Configure the logger.
+2. Define configuration paths.
+3. Load or initialize rules.
+4. Load user settings.
+5. Dynamically apply themes and settings.
+6. Set up the user interface.
+7. Start the main application loop.
+
+### `check_first_run(config_directory, base_directory_var, settings, save_settings, logger)`
+**Purpose**: Checks if the application is being run for the first time, prompts the user to select a base directory, and saves the organization folder to the settings.
 
 **Parameters**:
 - `config_directory` (str): Path to the configuration directory.
 - `base_directory_var` (tk.StringVar): Variable to store the base directory path.
+- `settings` (dict): Application settings.
+- `save_settings` (function): Function to save updated settings.
 - `logger` (logging.Logger): Logger instance for logging events.
+
+**Updates**:
+- Prompts the user to select a folder to organize (`organisation_folder`).
+- Saves the selected folder to the settings.
 
 **Usage**:
 ```python
-check_first_run(config_directory, base_directory_var, logger)
+check_first_run(config_directory, base_directory_var, settings, save_settings, logger)
 ```
-
----
 
 ### `main(rules, logger)`
 **Purpose**: Entry point for the application. Initializes the UI, loads settings, and starts the main loop.
@@ -33,8 +75,6 @@ check_first_run(config_directory, base_directory_var, logger)
 main(rules, logger)
 ```
 
----
-
 ### `browse_path(path_var, logger)`
 **Purpose**: Opens a directory selection dialog and updates the provided path variable.
 
@@ -46,8 +86,6 @@ main(rules, logger)
 ```python
 browse_path(path_var, logger)
 ```
-
----
 
 ### `load_settings(logger)`
 **Purpose**: Loads application settings from a YAML file. Creates default settings if the file does not exist.
@@ -63,8 +101,6 @@ browse_path(path_var, logger)
 settings = load_settings(logger)
 ```
 
----
-
 ### `save_settings(settings, logger)`
 **Purpose**: Saves application settings to a YAML file.
 
@@ -77,22 +113,31 @@ settings = load_settings(logger)
 save_settings(settings, logger)
 ```
 
----
-
-### `start_organization(base_directory, rules, logger)`
-**Purpose**: Organizes files in the base directory based on the provided rules.
+### `organize_files(settings, rules, logger)`
+**Purpose**: Organizes files in the folder specified by the `organisation_folder` setting.
 
 **Parameters**:
-- `base_directory` (str): Path to the base directory.
-- `rules` (dict): Dictionary of rules for file organization.
+- `settings` (dict): Application settings containing the organization folder.
+- `rules` (dict): Dictionary of rules for organizing files.
 - `logger` (logging.Logger): Logger instance for logging events.
 
 **Usage**:
 ```python
-start_organization(base_directory, rules, logger)
+organize_files(settings, rules, logger)
 ```
 
----
+### `start_organization(settings, rules, logger)`
+**Purpose**: Organizes files in the folder specified by the `organisation_folder` setting with progress updates.
+
+**Parameters**:
+- `settings` (dict): Application settings containing the organization folder.
+- `rules` (dict): Dictionary of rules for organizing files.
+- `logger` (logging.Logger): Logger instance for logging events.
+
+**Usage**:
+```python
+start_organization(settings, rules, logger)
+```
 
 ### `create_dummy_files(base_directory, logger)`
 **Purpose**: Creates dummy files in the base directory for testing purposes.
@@ -106,20 +151,32 @@ start_organization(base_directory, rules, logger)
 create_dummy_files(base_directory, logger)
 ```
 
----
-
 ### `show_license_info()`
-**Purpose**: Displays the license information in a message box.
+**Description:**
+Displays the license information in a message box.
 
-**Parameters**:
-- None
+### `setup_ui(root, base_path_var, rules, config_directory, style, settings, logger)`
+**Description:**
+Sets up the user interface, including the rule list, buttons, and menu bar.
 
-**Usage**:
-```python
-show_license_info()
-```
+**Parameters:**
+- `root`: The main application window.
+- `base_path_var`: The base directory path variable.
+- `rules`: The file organization rules.
+- `config_directory`: The configuration directory path.
+- `style`: The UI style object.
+- `settings`: The user settings.
+- `logger`: The logger instance.
 
----
+## Configuration
+Settings are stored in `~/default_dir/config/settings.yml`. The following settings can be customized:
+- `theme`: The UI theme.
+- `developer_mode`: Enable or disable developer mode.
+- `logging_level`: Set the logging level.
+- `accent_color`, `background_color`, `text_color`: Customize UI colors.
+
+## License
+This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## `ui_helpers.py`
 
@@ -133,8 +190,6 @@ show_license_info()
 ```python
 center_window(window)
 ```
-
----
 
 ### `add_menubar_with_settings(window, style, settings, save_settings, logger, base_directory)`
 **Purpose**: Adds a menubar with various settings options to the given window.
@@ -155,8 +210,6 @@ center_window(window)
 add_menubar_with_settings(window, style, settings, save_settings, logger, base_directory)
 ```
 
----
-
 ### `trigger_developer_function(base_directory, logger)`
 **Purpose**: Developer function to create dummy files in the base directory.
 
@@ -168,8 +221,6 @@ add_menubar_with_settings(window, style, settings, save_settings, logger, base_d
 ```python
 trigger_developer_function(base_directory, logger)
 ```
-
----
 
 ### `update_rule_list(rule_frame, rules, config_path, logger)`
 **Purpose**: Updates the rule list in the UI.
@@ -184,8 +235,6 @@ trigger_developer_function(base_directory, logger)
 ```python
 update_rule_list(rule_frame, rules, config_path, logger)
 ```
-
----
 
 ### `edit_rule(rule_key, rules, config_path, logger, rule_frame)`
 **Purpose**: Opens a window to edit a specific rule.
@@ -202,8 +251,6 @@ update_rule_list(rule_frame, rules, config_path, logger)
 edit_rule(rule_key, rules, config_path, logger, rule_frame)
 ```
 
----
-
 ### `delete_rule(rule_key, rules, config_path, logger, rule_frame)`
 **Purpose**: Deletes a specific rule after user confirmation.
 
@@ -219,8 +266,6 @@ edit_rule(rule_key, rules, config_path, logger, rule_frame)
 delete_rule(rule_key, rules, config_path, logger, rule_frame)
 ```
 
----
-
 ### `delete_multiple_rules(rules, config_path, logger, rule_frame)`
 **Purpose**: Opens a window to delete multiple rules after user confirmation.
 
@@ -234,8 +279,6 @@ delete_rule(rule_key, rules, config_path, logger, rule_frame)
 ```python
 delete_multiple_rules(rules, config_path, logger, rule_frame)
 ```
-
----
 
 ### `enable_all_rules(rules, config_path, rule_frame, logger)`
 **Purpose**: Enables all rules.
@@ -251,8 +294,6 @@ delete_multiple_rules(rules, config_path, logger, rule_frame)
 enable_all_rules(rules, config_path, rule_frame, logger)
 ```
 
----
-
 ### `disable_all_rules(rules, config_path, rule_frame, logger)`
 **Purpose**: Disables all rules.
 
@@ -266,8 +307,6 @@ enable_all_rules(rules, config_path, rule_frame, logger)
 ```python
 disable_all_rules(rules, config_path, rule_frame, logger)
 ```
-
----
 
 ## `tests/test_app.py`
 
@@ -300,15 +339,11 @@ disable_all_rules(rules, config_path, rule_frame, logger)
 - Verifies that the logger logs messages for directory creation and file creation.
 - Ensures cleanup after the test.
 
----
-
 ### Known Issues
 - **Developer Settings Buttons**: The "Save" and "Cancel" buttons in the developer settings window are positioned outside the visible window.
 - **Browse Button**: The "Browse" button is currently not available in some parts of the application.
 - **Dummy Files**: Creating dummy files does not work as expected in certain scenarios.
 - **Log Categories**: Logging categories are currently unavailable.
-
----
 
 This section documents the automated tests included in the `tests/test_app.py` file, providing a health check for core functionalities.
 

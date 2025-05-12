@@ -1,28 +1,67 @@
+"""
+Main application logic for the TaskMover application.
+
+This module initializes the application, sets up the user interface, and
+handles user interactions.
+"""
+
 import os
 import tkinter as tk
 import logging
 from tkinter import Menu, filedialog, messagebox, simpledialog, colorchooser  # Import colorchooser for askcolor
 import yaml  # Import yaml to fix NameError
 import ttkbootstrap as ttkb
+import tkinter.scrolledtext as scrolledtext
 
 from .config import load_rules, create_default_rules, save_rules, load_settings, save_settings
-from .file_operations import organize_files, move_file, start_organization  # Import move_file to fix NameError
+from .file_operations import organize_files, move_file, start_organization  # Fixed relative import
 from .logging_config import configure_logger
-from taskmover.rule_operations import add_rule
-from taskmover.utils import center_window
+from .rule_operations import add_rule
+from .utils import center_window
+from .utils import ensure_directory_exists
+from .config import load_or_initialize_rules
+from .ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
+from .shared import reset_colors, show_license_info, browse_path
+from .debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
+from .ui_helpers import open_settings_window
+from .ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules
 
-def check_first_run(config_directory, base_directory_var, logger):
+settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
+
+class TextHandler(logging.Handler):
+    """Custom logging handler that writes log messages to a Tkinter Text widget."""
+    def __init__(self, text_widget):
+        super().__init__()
+        self.text_widget = text_widget
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.text_widget.after(0, self._append, msg)
+
+    def _append(self, msg):
+        self.text_widget.insert('end', msg + '\n')
+        self.text_widget.see('end')
+
+def check_first_run(config_directory, base_directory_var, settings, save_settings, logger):
     """Check if this is the first run and prompt for base directory setup."""
     first_run_marker = os.path.join(config_directory, "first_run_marker.txt")
     if not os.path.exists(first_run_marker):
         logger.info("First run detected. Prompting user to select a base directory.")
-        messagebox.showinfo("Welcome", "It seems this is your first time running the program. Please select a base directory.")
+        messagebox.showinfo("Welcome", "It seems this is your first time running the program. Please select a base directory. This will be used to save your settings.")
         selected_path = filedialog.askdirectory(title="Select Base Directory")
         base_directory_var.set(selected_path or os.path.expanduser("~/default_dir"))
+        
+        # Prompt for organization folder
+        messagebox.showinfo("Select Folder to Organize", "Please select a folder that you want to organize. Default: Downloads")
+        organisation_folder = filedialog.askdirectory(title="Select Folder to Organize") or os.path.expanduser("~/Downloads")
+        settings["organisation_folder"] = organisation_folder  # Save to settings
+        save_settings(settings_path, settings, logger)
+
         os.makedirs(base_directory_var.get(), exist_ok=True)
         with open(first_run_marker, 'w') as marker_file:
             marker_file.write("This file marks that the program has been run before.")
         logger.info(f"Base directory set to: {base_directory_var.get()}")
+        logger.info(f"Organization folder set to: {organisation_folder}")
 
 def main(rules, logger):
     """Main entry point for the application."""
@@ -40,7 +79,7 @@ def main(rules, logger):
     config_directory = os.path.join(base_directory_var.get(), "config")
     os.makedirs(config_directory, exist_ok=True)
 
-    check_first_run(config_directory, base_directory_var, logger)
+    check_first_run(config_directory, base_directory_var, settings, save_settings, logger)
 
     root.deiconify()
     root.title("File Organizer")
@@ -58,34 +97,58 @@ def main(rules, logger):
     logger.info("Application exited successfully.")
 
 def setup_ui(root, base_path_var, rules, config_directory, style, settings, logger):
-    """Set up the main UI components."""
-    # Import functions locally to avoid circular import
-    from taskmover.ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
+    """Set up the user interface."""
+    # Apply settings on startup
+    from .config import apply_settings
+    apply_settings(root, settings, logger)
 
-    # Base Path Frame
-    base_path_frame = ttkb.Frame(root, padding=10, bootstyle="primary")
-    base_path_frame.pack(fill="x", pady=10, padx=10)
+    # Add Menubar
+    add_menubar_with_settings(root, style, settings, save_settings, logger)
 
-    ttkb.Label(base_path_frame, text="Base Path:", font=("Helvetica", 12, "bold")).pack(side="left", padx=10)
-    ttkb.Entry(base_path_frame, textvariable=base_path_var, width=50).pack(side="left", padx=10)
-    ttkb.Button(base_path_frame, text="Browse", bootstyle="success", command=lambda: browse_path(base_path_var, logger)).pack(side="left", padx=10)
+    # Rule List and Scrollbar
+    rule_frame_container = ttkb.Frame(root, padding=0)
+    rule_frame_container.pack(fill="both", expand=True, padx=10, pady=10)
+    canvas = tk.Canvas(rule_frame_container, borderwidth=0, highlightthickness=0)
+    scrollbar = ttkb.Scrollbar(rule_frame_container, orient="vertical", command=canvas.yview)
+    rule_frame = ttkb.Frame(canvas, padding=10, bootstyle="secondary")
+    canvas.create_window((0, 0), window=rule_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
 
-    # Rule List and Buttons
-    rule_frame = ttkb.Frame(root, padding=10, bootstyle="secondary")
-    rule_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    def on_frame_configure(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+    rule_frame.bind("<Configure>", on_frame_configure)
+
+    def _on_mousewheel(event):
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
     update_rule_list(rule_frame, rules, config_directory, logger)
 
     # Buttons for rule operations
     button_frame = ttkb.Frame(root, padding=10, bootstyle="secondary")
-    button_frame.pack(fill="x", padx=10, pady=5)
+    button_frame.pack(fill="x", padx=10, pady=5, before=rule_frame_container)
+    ttkb.Button(button_frame, text="Enable All Rules", bootstyle="light", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Disable All Rules", bootstyle="light", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Add Rule", bootstyle="light", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Delete Multiple Rules", bootstyle="light", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=lambda: start_organization(settings, rules, logger)).pack(side="left", padx=5)
 
-    ttkb.Button(button_frame, text="Add Rule", bootstyle="success", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Remove Rule", bootstyle="danger", command=lambda: remove_rule(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Enable All Rules", bootstyle="primary", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Disable All Rules", bootstyle="warning", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
+    # Show log display widget only in developer mode
+    if settings.get("developer_mode", False):
+        log_frame = ttkb.Frame(root, padding=5, bootstyle="secondary")
+        log_frame.pack(fill="both", expand=False, padx=10, pady=(0,10), side="bottom")
+        log_label = ttkb.Label(log_frame, text="Application Log:", font=("Helvetica", 10, "bold"))
+        log_label.pack(anchor="w")
+        log_widget = scrolledtext.ScrolledText(log_frame, height=8, state="normal", wrap="word")
+        log_widget.pack(fill="both", expand=True)
 
-    # Menubar
-    add_menubar_with_settings(root, style, settings, save_settings, base_directory=base_path_var.get(), logger=logger)
+        # Attach custom handler to logger
+        text_handler = TextHandler(log_widget)
+        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%H:%M:%S')
+        text_handler.setFormatter(formatter)
+        logger.addHandler(text_handler)
 
 def browse_path(path_var, logger):
     """Browse and select a directory."""
@@ -94,33 +157,8 @@ def browse_path(path_var, logger):
         path_var.set(selected_path)
         logger.info(f"Base path updated to: {selected_path}")
 
-def load_settings(logger):
-    settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
-    if not os.path.exists(settings_path):
-        # Create default settings if the file does not exist
-        default_settings = {"theme": "flatly", "developer_mode": False, "accent_color": None, "background_color": None, "text_color": None}
-        save_settings(default_settings, logger)  # Pass logger to save_settings
-        return default_settings
-    try:
-        with open(settings_path, "r") as file:
-            settings = yaml.safe_load(file)
-            if not isinstance(settings, dict):  # Ensure the loaded settings are a dictionary
-                raise ValueError("Invalid settings format")
-            return settings
-    except (yaml.YAMLError, ValueError):
-        # If the file is invalid, recreate it with default settings
-        default_settings = {"theme": "flatly", "developer_mode": False, "accent_color": None, "background_color": None, "text_color": None}
-        save_settings(default_settings, logger)  # Pass logger to save_settings
-        return default_settings
-
-def save_settings(settings, logger):
-    settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
-    os.makedirs(os.path.dirname(settings_path), exist_ok=True)  # Ensure the directory exists
-    with open(settings_path, "w") as file:
-        yaml.dump(settings, file)
-    logger.info("Settings saved successfully.")
-
 def open_developer_settings(root, settings, logger):
+    """Open the developer settings window."""
     dev_window = tk.Toplevel(root)
     dev_window.title("Developer Settings")
     dev_window.geometry("400x300")
@@ -135,17 +173,18 @@ def open_developer_settings(root, settings, logger):
     dev_mode_dropdown.pack(fill="x", padx=10, pady=5)
     
     # Create Dummy Files Button
-    ttkb.Button(dev_window, text="Create Dummy Files", bootstyle="info", command=lambda: create_dummy_files(settings.get("base_directory", "~/default_dir"), logger)).pack(pady=10)
+    ttkb.Button(dev_window, text="Create Dummy Files", bootstyle="info", command=lambda: create_dummy_files(os.path.expanduser(settings.get("organisation_folder", "")), logger)).pack(pady=10)
 
     def save_dev_settings():
         settings["developer_mode"] = dev_mode_var.get() == "Enabled"
-        save_settings(settings,logger)  # Ensure save_settings is called correctly
+        save_settings(settings_path, settings, logger)  # Ensure save_settings is called correctly
         logger.info(f"Developer mode set to {dev_mode_var.get()}.")
         dev_window.destroy()
 
     ttkb.Button(dev_window, text="Save", command=save_dev_settings).pack(pady=10)
 
-def add_rule(rules, config_path, rule_frame, logger, root):
+def add_rule(rules, config_directory, rule_frame, logger, root):
+    """Add a new rule to the rules dictionary."""
     rule_name = simpledialog.askstring("Add Rule", "Enter the name of the new rule:")
     if rule_name:
         if rule_name in rules:
@@ -153,26 +192,28 @@ def add_rule(rules, config_path, rule_frame, logger, root):
             logger.warning(f"Attempted to add duplicate rule: {rule_name}")
         else:
             rules[rule_name] = {"patterns": [], "path": "", "unzip": False, "active": True}
-            save_rules(config_path, rules)
-            update_rule_list(rule_frame, rules, config_path, logger)
+            save_rules(config_directory, rules)
+            update_rule_list(rule_frame, rules, config_directory, logger)
             logger.info(f"Added new rule: {rule_name}")
 
-def remove_rule(rules, config_path, rule_frame, logger):
+def remove_rule(rules, config_directory, rule_frame, logger):
+    """Remove an existing rule from the rules dictionary."""
     rule_name = simpledialog.askstring("Remove Rule", "Enter the name of the rule to remove:")
     if rule_name:
         if rule_name in rules:
             del rules[rule_name]
-            save_rules(config_path, rules)
-            update_rule_list(rule_frame, rules, config_path, logger)
+            save_rules(config_directory, rules)
+            update_rule_list(rule_frame, rules, config_directory, logger)
             logger.info(f"Removed rule: {rule_name}")
         else:
             messagebox.showerror("Error", f"Rule '{rule_name}' does not exist.")
             logger.warning(f"Attempted to remove non-existent rule: {rule_name}")
 
-def delete_multiple_rules(rules, config_path, logger, rule_frame, root):
+def delete_multiple_rules(rules, config_directory, logger, rule_frame, root):
+    """Delete multiple rules from the rules dictionary."""
     delete_window = tk.Toplevel(root)
     delete_window.title("Delete Rules")
-    delete_window.geometry("400x300")
+    delete_window.geometry("400x500")
     center_window(delete_window)
 
     ttkb.Label(delete_window, text="Select Rules to Delete", font=("Helvetica", 12, "bold")).pack(pady=10)
@@ -190,8 +231,8 @@ def delete_multiple_rules(rules, config_path, logger, rule_frame, root):
             for rule_key in selected_rules:
                 del rules[rule_key]
                 logger.info(f"Rule '{rule_key}' deleted.")
-            save_rules(config_path, rules, logger)
-            update_rule_list(rule_frame, rules, config_path, logger)
+            save_rules(rules, logger)
+            update_rule_list(rule_frame, rules, config_directory, logger)
             delete_window.destroy()
 
     ttkb.Button(delete_window, text="Delete Selected", command=confirm_delete).pack(pady=10)
@@ -207,34 +248,37 @@ def create_dummy_files(base_directory, logger):
         os.makedirs(base_directory, exist_ok=True)
         logger.info(f"Base directory '{base_directory}' created.")
 
-    dummy_files = {
-        "Documents": ["test1.pdf", "test2.docx", "test3.txt"],
-        "Pictures": ["image1.jpg", "image2.png", "image3.gif"],
-        "Videos": ["video1.mp4", "video2.mkv", "video3.avi"],
-        "Archives": ["archive1.zip", "archive2.rar"],
-        "Others": ["random1.exe", "random2.tmp", "random3.log"]
-    }
+    dummy_files = [
+        "test_document.pdf",
+        "image_sample.jpg",
+        "video_clip.mp4",
+        "archive_file.zip",
+        "random_file.txt"
+    ]
 
     try:
-        for category, files in dummy_files.items():
-            for file_name in files:
-                file_path = os.path.join(base_directory, file_name)
-                with open(file_path, "w") as f:
-                    f.write(f"This is a dummy {category} file: {file_name}")
-                logger.info(f"Created dummy file: {file_path}")
+        for file_name in dummy_files:
+            file_path = os.path.join(base_directory, file_name)
+            with open(file_path, "w") as f:
+                f.write(f"This is a dummy file: {file_name}")
+            logger.info(f"Created dummy file: {file_path}")
 
-        messagebox.showinfo("Dummy Files Created", f"Dummy files have been created in '{base_directory}'.")
+        # Only show messagebox if running in a GUI context
+        try:
+            from tkinter import messagebox
+            messagebox.showinfo("Dummy Files Created", f"Dummy files have been created in '{base_directory}'.")
+        except Exception:
+            pass
     except Exception as e:
         logger.error(f"Error creating dummy files: {e}")
-        messagebox.showerror("Error", f"An error occurred while creating dummy files: {e}")
+        try:
+            from tkinter import messagebox
+            messagebox.showerror("Error", f"An error occurred while creating dummy files: {e}")
+        except Exception:
+            pass
 
-def add_menubar_with_settings(window, style, settings, save_settings, logger, base_directory):
-    def change_theme(style, settings, save_settings, theme_id):
-        """Change the application's theme."""
-        style.theme_use(theme_id)
-        settings["theme"] = theme_id
-        save_settings(settings, logger)
-        logger.info(f"Theme changed to: {theme_id}")
+def add_menubar_with_settings(window, style, settings, save_settings, logger):
+    """Add a menubar with settings to the main window."""
     menubar = Menu(window)
     window.config(menu=menubar)
 
@@ -245,56 +289,19 @@ def add_menubar_with_settings(window, style, settings, save_settings, logger, ba
 
     # Settings Menu
     settings_menu = Menu(menubar, tearoff=0)
-
-    # Theme Submenu
-    theme_menu = Menu(settings_menu, tearoff=0)
-    themes = [
-        ("Flatly", "flatly", "●●●"),
-        ("Darkly", "darkly", "●●●"),
-        ("Cyborg", "cyborg", "●●●"),
-        ("Solar", "solar", "●●●"),
-        ("Minty", "minty", "●●●"),
-        ("Pulse", "pulse", "●●●"),
-        ("Journal", "journal", "●●●"),
-        ("Sketchy", "sketchy", "●●●"),
-        ("Superhero", "superhero", "●●●"),
-        ("United", "united", "●●●"),
-        ("Morph", "morph", "●●●"),
-    ]
-
-    for theme_name, theme_id, dots in themes:
-        theme_menu.add_command(
-            label=f"{theme_name}  {dots}",
-            command=lambda theme_id=theme_id: change_theme(style, settings, save_settings, theme_id)  # Correctly pass theme_id
-        )
-
-    settings_menu.add_cascade(label="Themes", menu=theme_menu)
-
-    # Color Settings
-    color_menu = Menu(settings_menu, tearoff=0)
-    color_menu.add_command(label='Choose Accent Color', command=lambda: choose_color("Accent", style, settings, save_settings, logger))
-    color_menu.add_command(label='Choose Background Color', command=lambda: choose_color("Background", style, settings, save_settings, logger))
-    color_menu.add_command(label='Choose Text Color', command=lambda: choose_color("Text", style, settings, save_settings, logger))
-    color_menu.add_command(label='Reset Colors', command=lambda: reset_colors(settings, save_settings, logger))
-    settings_menu.add_cascade(label='Colors', menu=color_menu)
-
-    # Developer Settings
-    dev_menu = Menu(settings_menu, tearoff=0)
-    dev_menu.add_command(label="Developer Settings", command=lambda: open_developer_settings(window, settings, logger))
-    settings_menu.add_cascade(label='Developer', menu=dev_menu)
-
-    menubar.add_cascade(label="Settings", menu=settings_menu)
+    settings_menu.add_command(label="Open Settings", command=lambda: open_settings_window(window, settings, save_settings, logger)) 
+    menubar.add_cascade(label='Settings', menu=settings_menu)
 
     # Help Menu
     help_menu = Menu(menubar, tearoff=0)
-    help_menu.add_command(label="License Information", command=show_license_info)  # Add License Information button
+    help_menu.add_command(label="License Information", command=show_license_info)
     menubar.add_cascade(label="Help", menu=help_menu)
 
 def reset_colors(settings, save_settings, logger):
     """Reset all color settings to their default values."""
     default_colors = {"accent_color": None, "background_color": None, "text_color": None}
     settings.update(default_colors)
-    save_settings(settings, logger)
+    save_settings(settings_path, settings, logger)
     logger.info("Colors reset to default values.")
     messagebox.showinfo("Reset Colors", "All colors have been reset to their default values.")
 
@@ -303,7 +310,7 @@ def choose_color(color_type, style, settings, save_settings, logger):
     color_code = colorchooser.askcolor(title=f"Choose {color_type} Color")[1]  # Use colorchooser.askcolor
     if color_code:
         settings[f"{color_type.lower()}_color"] = color_code
-        save_settings(settings, logger)
+        save_settings(settings_path, settings, logger)
         logger.info(f"{color_type} color updated to: {color_code}")
 
         # Apply the selected color to the UI
@@ -322,7 +329,8 @@ def choose_color(color_type, style, settings, save_settings, logger):
 
         logger.info(f"{color_type} color applied to the UI.")
 
-def edit_rule(rule_key, rules, config_path, logger, rule_frame, root):
+def edit_rule(rule_key, rules, config_directory, logger, rule_frame, root):
+    """Edit an existing rule in the rules dictionary."""
     edit_window = tk.Toplevel(root)
     edit_window.title(f"Edit Rule: {rule_key}")
     edit_window.geometry("400x300")
@@ -357,9 +365,9 @@ def edit_rule(rule_key, rules, config_path, logger, rule_frame, root):
     def save_changes():
         rules[rule_key]['path'] = dir_var.get()
         rules[rule_key]['patterns'] = [pattern.strip() for pattern in patterns_var.get().split(",")]
-        save_rules(config_path, rules)
+        save_rules(config_directory, rules)
         logger.info(f"Rule '{rule_key}' updated.")
-        update_rule_list(rule_frame, rules, config_path, logger)
+        update_rule_list(rule_frame, rules, config_directory, logger)
         edit_window.destroy()
 
     ttkb.Button(edit_window, text="Save", command=save_changes).pack(pady=10)
@@ -391,3 +399,59 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
     messagebox.showinfo("License Information", license_text)
+
+def run():
+    """
+    Main function to initialize and run the TaskMover application.
+    """
+    logger = configure_logger()
+ 
+    # Define configuration paths
+    config_directory = os.path.expanduser("~/default_dir/config")
+    ensure_directory_exists(config_directory, logger)
+
+    config_directory = os.path.join(config_directory, "rules.yml")
+    fallback_path = os.path.join(config_directory, "fallback_conf.yml")
+    settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
+
+    # Load or initialize rules
+    rules = load_or_initialize_rules(config_directory, fallback_path, logger)
+
+    # Load settings
+    settings = load_settings(settings_path)
+
+    # --- Custom UI Setup ---
+    root = ttkb.Window(themename="flatly")
+    root.title("TaskMover")
+    root.geometry("900x700")
+
+    base_path_var = ttkb.StringVar(value=os.path.expanduser("~/default_dir"))
+    style = ttkb.Style()  # Initialize style before using it
+
+    # Load theme dynamically from settings
+    if not isinstance(settings, dict):
+        logger.warning("Settings is not a valid dictionary. Using default theme.")
+        settings = {}
+    theme_name = settings.get("theme", "flatly")
+    try:
+        style.theme_use(theme_name)
+        logger.info(f"Theme loaded dynamically from settings: {theme_name}")
+    except Exception as e:
+        logger.error(f"Failed to load theme '{theme_name}'. Falling back to default theme 'flatly'. Error: {e}")
+        style.theme_use("flatly")
+    base_directory_var = tk.StringVar(value=os.path.expanduser("~/default_dir"))
+    check_first_run(os.path.expanduser("~/default_dir/config"), base_directory_var, settings, save_settings, logger)
+    setup_ui(root, base_path_var, rules, config_directory, style, settings, logger)
+    logger.info("Starting TaskMover application.")
+
+    # Debugging utilities integration
+    if enable_debug_lines:
+        canvas = tk.Canvas(root)
+        canvas.pack(fill=tk.BOTH, expand=True)
+        draw_debug_lines(canvas, root, draw_to_center=True)
+
+    if enable_widget_highlighter:
+        widget_list = ["Widget1", "Widget2", "Widget3"]  # Example widget names
+        display_widget_names(widget_list)
+
+    root.mainloop()
