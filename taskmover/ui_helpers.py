@@ -10,16 +10,9 @@ from taskmover.config import save_rules
 import colorlog  # Import colorlog for colored console logging
 from taskmover.file_operations import organize_files
 from taskmover.rule_operations import add_rule
+from taskmover.utils import center_window
 
 logger = logging.getLogger("TaskMover")
-
-def center_window(window):
-    """Center a window on the screen."""
-    window.update_idletasks()
-    width, height = window.winfo_width(), window.winfo_height()
-    x = (window.winfo_screenwidth() // 2) - (width // 2)
-    y = (window.winfo_screenheight() // 2) - (height // 2)
-    window.geometry(f'{width}x{height}+{x}+{y}')
 
 def add_menubar(window):
     menubar = Menu(window)
@@ -144,10 +137,10 @@ def add_menubar_with_settings(window, style, settings, save_settings, logger):
 
     # Color Settings
     color_menu = Menu(settings_menu, tearoff=0)
-    color_menu.add_command(label='Choose Accent Color', command=lambda: choose_color("Accent", style, settings, save_settings, logger))
-    color_menu.add_command(label='Choose Background Color', command=lambda: choose_color("Background", style, settings, save_settings, logger))
-    color_menu.add_command(label='Choose Text Color', command=lambda: choose_color("Text", style, settings, save_settings, logger))
-    color_menu.add_command(label='Reset Colors', command=lambda: reset_colors(settings, save_settings, logger))
+    color_menu.add_command(label='Choose Accent Color', command=lambda: choose_color("Accent", style, settings, save_settings))
+    color_menu.add_command(label='Choose Background Color', command=lambda: choose_color("Background", style, settings, save_settings))
+    color_menu.add_command(label='Choose Text Color', command=lambda: choose_color("Text", style, settings, save_settings))
+    color_menu.add_command(label='Reset Colors', command=lambda: reset_colors(settings, save_settings,logger))
     settings_menu.add_cascade(label='Colors', menu=color_menu)
 
     # Developer Settings
@@ -198,7 +191,7 @@ def apply_custom_style(style, settings, save_settings, custom_style):
     save_settings(settings,logger)
     logger.info(f"Applied custom style: {custom_style}")
 
-def open_developer_settings(settings, save_settings, logger):
+def open_developer_settings(window, settings, save_settings, logger):
     dev_window = tk.Toplevel()
     dev_window.title("Developer Settings")
     dev_window.geometry("400x400")
@@ -327,9 +320,18 @@ def edit_rule(rule_key, rules, config_path, logger, rule_frame):
     ttkb.Button(edit_window, text="Save", command=save_changes).pack(pady=10)
     ttkb.Button(edit_window, text="Cancel", command=edit_window.destroy).pack(pady=5)
 
-def add_rule_button(root, rules, config_path, rule_frame, logger):
-    """Add a button to add new rules."""
-    ttkb.Button(root, text="Add Rule", command=lambda: add_rule(rules, config_path, rule_frame, logger, root)).pack(pady=5)
+def add_rule_button(rules, config_path, rule_frame, logger, root):
+    """Add a new rule to the rules dictionary and update the UI."""
+    rule_name = simpledialog.askstring("Add Rule", "Enter the name of the new rule:", parent=root)
+    if rule_name:
+        if rule_name in rules:
+            messagebox.showerror("Error", f"Rule '{rule_name}' already exists.", parent=root)
+            logger.warning(f"Attempted to add duplicate rule: {rule_name}")
+        else:
+            rules[rule_name] = {"patterns": [], "path": "", "unzip": False, "active": True}
+            save_rules(config_path, rules)
+            update_rule_list(rule_frame, rules, config_path, logger)
+            logger.info(f"Added new rule: {rule_name}")
 
 def activate_all_button(rules, config_path, rule_frame, logger):
     """Activate all rules."""

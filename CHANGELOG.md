@@ -1,5 +1,18 @@
 # Changelog
+## [1.2.1.5] - 2025-05-12
+### Added
 
+### Improved
+###Fixed
+- Fixed the "Browse" button in the rule edit window to be available and functional.
+-Fixed UI issues with the "Save" and "Cancel" buttons in the developer settings window to ensure they are positioned correctly within the visible window.
+- Fixed the dummy file creation functionality to work as expected in all scenarios.
+-fixed ui bugs 
+### Known Bugs
+- [ ] **Developer Settings Buttons**: The "Save" and "Cancel" buttons in the developer settings window are positioned outside the visible window.
+- [ ] **Browse Button**: The "Browse" button is currently not available in some parts of the application.
+- [ ] **Dummy Files**: Creating dummy files does not work as expected in certain scenarios.
+- [ ] **Log Categories**: Logging categories currently unavailable.
 ## [1.2.1] - 2025-05-11
 ### Added
 - Added a "License Information" button to the menu bar under the "Help" menu. Clicking it displays the license details in a message box.

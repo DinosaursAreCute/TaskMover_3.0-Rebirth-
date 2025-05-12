@@ -67,8 +67,7 @@ def run():
     import tkinter as tk
     menubar = root.nametowidget(root.winfo_children()[0])
     help_menu = tk.Menu(menubar, tearoff=0)
-    help_menu.add_command(label="About", command=show_license_info)
-    menubar.add_cascade(label="Help", menu=help_menu)
+    
 
     # Base Path Frame
     base_path_var = ttkb.StringVar(value=os.path.expanduser("~/default_dir"))
