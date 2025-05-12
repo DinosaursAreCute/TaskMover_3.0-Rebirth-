@@ -7,10 +7,15 @@ def load_rules(config_path, fallback_path):
         if os.path.exists(config_path):
             with open(config_path, 'r') as file:
                 rules = yaml.safe_load(file)
+                for rule in rules.values():
+                    rule.setdefault('unzip', False)  # Add default value for 'unzip'
                 return rules
         elif os.path.exists(fallback_path):
             with open(fallback_path, 'r') as file:
-                return yaml.safe_load(file)
+                rules = yaml.safe_load(file)
+                for rule in rules.values():
+                    rule.setdefault('unzip', False)  # Add default value for 'unzip'
+                return rules
         else:
             return create_default_rules(config_path)
     except Exception as e:
@@ -20,8 +25,8 @@ def create_default_rules(config_path):
     """Create default rules and save them to the configuration file."""
     default_dir = os.path.expanduser("~/default_dir")
     default_rules = {
-        "Pictures": {"patterns": ["*.jpg", "*.png"], "path": os.path.join(default_dir, "Pictures"), "active": True},
-        "Documents": {"patterns": ["*.pdf", "*.docx"], "path": os.path.join(default_dir, "Documents"), "active": True},
+        "Pictures": {"patterns": ["*.jpg", "*.png"], "path": os.path.join(default_dir, "Pictures"),"unzip":False, "active": True},
+        "Documents": {"patterns": ["*.pdf", "*.docx"], "path": os.path.join(default_dir, "Documents"),"unzip":False, "active": True},
     }
     os.makedirs(default_dir, exist_ok=True)
     save_rules(config_path, default_rules)
@@ -78,3 +83,22 @@ def save_settings(settings_path, settings, logger=None):
         if logger:
             logger.error(f"Failed to save settings: {e}")
         raise RuntimeError(f"Failed to save settings: {e}")
+
+def load_or_initialize_rules(config_path, fallback_path, logger=None):
+    """Load rules from a configuration file or initialize default rules."""
+    try:
+        if os.path.exists(config_path):
+            if logger:
+                logger.info(f"Loading rules from configuration file: {config_path}")
+            rules = load_rules(config_path, fallback_path)
+            for rule in rules.values():
+                rule.setdefault('unzip', False)  # Add default value for 'unzip'
+            return rules
+        else:
+            if logger:
+                logger.warning(f"Configuration file not found. Creating default rules at: {config_path}")
+            return create_default_rules(config_path)
+    except Exception as e:
+        if logger:
+            logger.error(f"Error loading or initializing rules: {e}")
+        raise
