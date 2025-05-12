@@ -1,7 +1,20 @@
 # TaskMover Documentation
 
+## What’s New in 2.0.0
+- Major UI and UX improvements for rule management and settings.
+- Full test automation for settings, dummy file creation, UI integration, themes, and color application.
+- Colorful, detailed test logging for all automated tests.
+- Expanded documentation and test case coverage.
+- Improved error handling and logging throughout the application.
+- Enhanced theme and color customization for the UI.
+- Added developer tools and advanced logging for debugging.
+- Improved compatibility with Windows and cross-platform environments.
+
 ## Overview
 TaskMover is a file organization tool designed to help users manage and organize their files efficiently. It provides a user-friendly interface and customizable rules for file organization.
+
+## Quick Start Tutorial
+See the [README.md](./README.md) for a step-by-step tutorial on installing, launching, and using TaskMover.
 
 ## Features
 - Dynamic theme loading based on user settings.
@@ -9,6 +22,7 @@ TaskMover is a file organization tool designed to help users manage and organize
 - Developer mode for advanced debugging.
 - Integrated logging for better traceability.
 - Support for custom UI themes and colors.
+- Automated tests for all major features.
 
 ## Setup
 1. Clone the repository.
@@ -30,17 +44,23 @@ Main function to initialize and run the TaskMover application.
 6. Set up the user interface.
 7. Start the main application loop.
 
-### `check_first_run(config_directory, base_directory_var, logger)`
-**Purpose**: Checks if the application is being run for the first time and prompts the user to select a base directory.
+### `check_first_run(config_directory, base_directory_var, settings, save_settings, logger)`
+**Purpose**: Checks if the application is being run for the first time, prompts the user to select a base directory, and saves the organization folder to the settings.
 
 **Parameters**:
 - `config_directory` (str): Path to the configuration directory.
 - `base_directory_var` (tk.StringVar): Variable to store the base directory path.
+- `settings` (dict): Application settings.
+- `save_settings` (function): Function to save updated settings.
 - `logger` (logging.Logger): Logger instance for logging events.
+
+**Updates**:
+- Prompts the user to select a folder to organize (`organisation_folder`).
+- Saves the selected folder to the settings.
 
 **Usage**:
 ```python
-check_first_run(config_directory, base_directory_var, logger)
+check_first_run(config_directory, base_directory_var, settings, save_settings, logger)
 ```
 
 ### `main(rules, logger)`
@@ -93,17 +113,30 @@ settings = load_settings(logger)
 save_settings(settings, logger)
 ```
 
-### `start_organization(base_directory, rules, logger)`
-**Purpose**: Organizes files in the base directory based on the provided rules.
+### `organize_files(settings, rules, logger)`
+**Purpose**: Organizes files in the folder specified by the `organisation_folder` setting.
 
 **Parameters**:
-- `base_directory` (str): Path to the base directory.
-- `rules` (dict): Dictionary of rules for file organization.
+- `settings` (dict): Application settings containing the organization folder.
+- `rules` (dict): Dictionary of rules for organizing files.
 - `logger` (logging.Logger): Logger instance for logging events.
 
 **Usage**:
 ```python
-start_organization(base_directory, rules, logger)
+organize_files(settings, rules, logger)
+```
+
+### `start_organization(settings, rules, logger)`
+**Purpose**: Organizes files in the folder specified by the `organisation_folder` setting with progress updates.
+
+**Parameters**:
+- `settings` (dict): Application settings containing the organization folder.
+- `rules` (dict): Dictionary of rules for organizing files.
+- `logger` (logging.Logger): Logger instance for logging events.
+
+**Usage**:
+```python
+start_organization(settings, rules, logger)
 ```
 
 ### `create_dummy_files(base_directory, logger)`

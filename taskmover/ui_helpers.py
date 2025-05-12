@@ -11,14 +11,15 @@ from tkinter import Menu, simpledialog, colorchooser, messagebox, filedialog, tt
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import os
+import winsound  # Import winsound for playing error sounds
 
-from shared import reset_colors, show_license_info, browse_path
+from .shared import reset_colors, show_license_info, browse_path
 
-from config import load_settings, save_rules
+from .config import load_settings, save_rules
 import colorlog  # Import colorlog for colored console logging
-from file_operations import organize_files
-from rule_operations import add_rule
-from utils import center_window
+from .file_operations import organize_files
+from .rule_operations import add_rule
+from .utils import center_window
 
 logger = logging.getLogger("TaskMover")
 
@@ -176,6 +177,14 @@ def open_settings_window(root, settings, save_settings, logger):
     settings_window.title("Settings")
     settings_window.geometry("400x600")
 
+    # Prevent the user from closing or moving focus without saving or discarding
+    def on_closing():
+        winsound.MessageBeep(winsound.MB_ICONHAND)  # Play error sound
+        messagebox.showerror("Error", "You must save or discard changes before closing the settings window.")
+
+    settings_window.protocol("WM_DELETE_WINDOW", on_closing)
+    settings_window.transient(root)  # Keep the window on top of the root window
+
     # Add a scrollbar to the settings window
     canvas = tk.Canvas(settings_window)
     scrollbar = ttk.Scrollbar(settings_window, orient="vertical", command=canvas.yview)
@@ -194,13 +203,13 @@ def open_settings_window(root, settings, save_settings, logger):
 
     ttkb.Label(scrollable_frame, text="Settings", font=("Helvetica", 14, "bold")).pack(pady=10)
 
-    # Base Directory
-    ttkb.Label(scrollable_frame, text="Base Directory:").pack(anchor="w", padx=10, pady=5)
-    base_dir_var = tk.StringVar(value=settings.get("base_directory", ""))
-    base_dir_frame = ttkb.Frame(scrollable_frame)
-    base_dir_frame.pack(fill="x", padx=10, pady=5)
-    ttkb.Entry(base_dir_frame, textvariable=base_dir_var, width=40).pack(side="left", padx=5)
-    ttkb.Button(base_dir_frame, text="Browse", command=lambda: browse_path_and_update(base_dir_var, logger)).pack(side="left", padx=5)
+    # Organisation Folder
+    ttkb.Label(scrollable_frame, text="Organisation Folder:").pack(anchor="w", padx=10, pady=5)
+    organisation_folder_var = tk.StringVar(value=settings.get("organisation_folder", ""))
+    organisation_folder_frame = ttkb.Frame(scrollable_frame)
+    organisation_folder_frame.pack(fill="x", padx=10, pady=5)
+    ttkb.Entry(organisation_folder_frame, textvariable=organisation_folder_var, width=40).pack(side="left", padx=5)
+    ttkb.Button(organisation_folder_frame, text="Browse", command=lambda: browse_path_and_update(organisation_folder_var, logger)).pack(side="left", padx=5)
 
     # Theme Selection
     ttkb.Label(scrollable_frame, text="Theme:").pack(anchor="w", padx=10, pady=5)
@@ -240,8 +249,7 @@ def open_settings_window(root, settings, save_settings, logger):
         ttkb.Checkbutton(components_frame, text=component, variable=var, bootstyle="info-switch").pack(anchor="w")
 
     # Add button for developer function
-    ttkb.Button(scrollable_frame, text="Run Developer Function", bootstyle="primary", 
-                command=lambda: trigger_developer_function(base_dir_var.get(), logger)).pack(anchor="w", padx=10, pady=10)
+    ttkb.Button(scrollable_frame, text="Create Dummy Files", bootstyle="primary", command=lambda: trigger_developer_function(organisation_folder_var.get(), logger)).pack(anchor="w", padx=10, pady=10)
     # Custom Theme Section
     ttkb.Label(scrollable_frame, text="Custom Theme:", font=("Helvetica", 12, "bold")).pack(anchor="w", padx=10, pady=10)
 
@@ -273,7 +281,7 @@ def open_settings_window(root, settings, save_settings, logger):
 
     # Save and Cancel Buttons
     def save_changes():
-        settings["base_directory"] = base_dir_var.get()
+        settings["organisation_folder"] = organisation_folder_var.get()
         settings["theme"] = theme_var.get()
         settings["developer_mode"] = developer_mode_var.get()
         settings["logging_level"] = logging_level_var.get()
@@ -467,7 +475,7 @@ def edit_rule(rule_key, rules, config_path, logger, rule_frame):
     edit_window.title(f"Edit Rule: {rule_key}")
     edit_window.geometry("400x300")
     center_window(edit_window)
-
+    edit_window.attributes('-topmost', True)
     ttkb.Label(edit_window, text=f"Edit Rule: {rule_key}", font=("Helvetica", 12, "bold")).pack(pady=10)
 
     # Directory

@@ -8,8 +8,8 @@ TaskMover is a Python-based file organization tool that allows users to define r
 - Enable or disable rules dynamically.
 - Graphical user interface (GUI) for managing rules and configurations.
 - Customizable themes and colors.
-- Developer tools for testing
-
+- Developer tools for testing and debugging.
+- Colorful, detailed test automation and logging.
 
 ## Requirements
 - Python 3.x
@@ -39,34 +39,59 @@ TaskMover is a Python-based file organization tool that allows users to define r
    pip install colorlog
    ```
 
+Or simply:
+```bash
+pip install -r requirements.txt
+```
+
 ## Getting Started
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/yourusername/TaskMover.git
    cd TaskMover
    ```
-
-2. Install dependencies:
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
-
-3. Run the application:
-   ```bash
-   python main.py
+3. **Run the application:**
+   ```powershell
+   python -m taskmover
    ```
 
+## Quick Tutorial
+### 1. Launch TaskMover
+Run the following command in your project directory:
+```powershell
+python -m taskmover
+```
+
+### 2. Set Up Your Base Directory
+On first launch, you’ll be prompted to select a base directory. This is where your settings and rules will be stored.
+
+### 3. Add a Rule
+- Click the "Add Rule" button in the main window.
+- Enter a name, file pattern (e.g., `*.pdf`), and destination path.
+- Optionally enable unzipping and toggle the rule’s active status.
+- Click "Save" to add the rule.
+
+### 4. Organize Files
+- Click the "Organize" button to move files according to your rules.
+- Progress and logs will be shown in the application window.
+
+### 5. Customize
+- Change the theme or colors from the Settings menu.
+- Use developer tools for testing and debugging (see Documentation).
+
 ## Documentation
-For detailed documentation, refer to the following files:
-- [Changelog](./CHANGELOG.md): A detailed list of changes made in each version.
-- [Requirements](./requirements.txt): A list of dependencies required for the project.
+For detailed documentation, refer to:
+- [Changelog](./CHANGELOG.md): List of changes in each version.
+- [Documentation](./DOCUMENTATION.md): Full usage and API details.
+- [Requirements](./requirements.txt): List of dependencies.
 
 ## Known Bugs
 - [ ] **Browse Button**: The "Browse" button is currently not available in some parts of the application.
 - [ ] **Dummy Files**: Creating dummy files does not work as expected in certain scenarios.
-
-## Contributing
-Currently closed
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.

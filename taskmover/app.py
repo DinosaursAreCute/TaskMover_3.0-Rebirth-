@@ -11,23 +11,38 @@ import logging
 from tkinter import Menu, filedialog, messagebox, simpledialog, colorchooser  # Import colorchooser for askcolor
 import yaml  # Import yaml to fix NameError
 import ttkbootstrap as ttkb
+import tkinter.scrolledtext as scrolledtext
 
-from config import load_rules, create_default_rules, save_rules, load_settings, save_settings
-from file_operations import organize_files, move_file, start_organization  # Import move_file to fix NameError
-from logging_config import configure_logger
-from rule_operations import add_rule
-from utils import center_window
-from utils import ensure_directory_exists
-from config import load_or_initialize_rules
-from ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
-from shared import reset_colors, show_license_info, browse_path
-from debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
-from ui_helpers import open_settings_window
-from ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules
+from .config import load_rules, create_default_rules, save_rules, load_settings, save_settings
+from .file_operations import organize_files, move_file, start_organization  # Fixed relative import
+from .logging_config import configure_logger
+from .rule_operations import add_rule
+from .utils import center_window
+from .utils import ensure_directory_exists
+from .config import load_or_initialize_rules
+from .ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
+from .shared import reset_colors, show_license_info, browse_path
+from .debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
+from .ui_helpers import open_settings_window
+from .ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules
 
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
 
-def check_first_run(config_directory, base_directory_var, logger):
+class TextHandler(logging.Handler):
+    """Custom logging handler that writes log messages to a Tkinter Text widget."""
+    def __init__(self, text_widget):
+        super().__init__()
+        self.text_widget = text_widget
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.text_widget.after(0, self._append, msg)
+
+    def _append(self, msg):
+        self.text_widget.insert('end', msg + '\n')
+        self.text_widget.see('end')
+
+def check_first_run(config_directory, base_directory_var, settings, save_settings, logger):
     """Check if this is the first run and prompt for base directory setup."""
     first_run_marker = os.path.join(config_directory, "first_run_marker.txt")
     if not os.path.exists(first_run_marker):
@@ -35,10 +50,18 @@ def check_first_run(config_directory, base_directory_var, logger):
         messagebox.showinfo("Welcome", "It seems this is your first time running the program. Please select a base directory. This will be used to save your settings.")
         selected_path = filedialog.askdirectory(title="Select Base Directory")
         base_directory_var.set(selected_path or os.path.expanduser("~/default_dir"))
+        
+        # Prompt for organization folder
+        messagebox.showinfo("Select Folder to Organize", "Please select a folder that you want to organize. Default: Downloads")
+        organisation_folder = filedialog.askdirectory(title="Select Folder to Organize") or os.path.expanduser("~/Downloads")
+        settings["organisation_folder"] = organisation_folder  # Save to settings
+        save_settings(settings_path, settings, logger)
+
         os.makedirs(base_directory_var.get(), exist_ok=True)
         with open(first_run_marker, 'w') as marker_file:
             marker_file.write("This file marks that the program has been run before.")
         logger.info(f"Base directory set to: {base_directory_var.get()}")
+        logger.info(f"Organization folder set to: {organisation_folder}")
 
 def main(rules, logger):
     """Main entry point for the application."""
@@ -56,7 +79,7 @@ def main(rules, logger):
     config_directory = os.path.join(base_directory_var.get(), "config")
     os.makedirs(config_directory, exist_ok=True)
 
-    check_first_run(config_directory, base_directory_var, logger)
+    check_first_run(config_directory, base_directory_var, settings, save_settings, logger)
 
     root.deiconify()
     root.title("File Organizer")
@@ -76,7 +99,7 @@ def main(rules, logger):
 def setup_ui(root, base_path_var, rules, config_directory, style, settings, logger):
     """Set up the user interface."""
     # Apply settings on startup
-    from config import apply_settings
+    from .config import apply_settings
     apply_settings(root, settings, logger)
 
     # Add Menubar
@@ -110,7 +133,22 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     ttkb.Button(button_frame, text="Disable All Rules", bootstyle="light", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Add Rule", bootstyle="light", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Delete Multiple Rules", bootstyle="light", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=lambda: start_organization(base_path_var.get(), rules, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=lambda: start_organization(settings, rules, logger)).pack(side="left", padx=5)
+
+    # Show log display widget only in developer mode
+    if settings.get("developer_mode", False):
+        log_frame = ttkb.Frame(root, padding=5, bootstyle="secondary")
+        log_frame.pack(fill="both", expand=False, padx=10, pady=(0,10), side="bottom")
+        log_label = ttkb.Label(log_frame, text="Application Log:", font=("Helvetica", 10, "bold"))
+        log_label.pack(anchor="w")
+        log_widget = scrolledtext.ScrolledText(log_frame, height=8, state="normal", wrap="word")
+        log_widget.pack(fill="both", expand=True)
+
+        # Attach custom handler to logger
+        text_handler = TextHandler(log_widget)
+        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%H:%M:%S')
+        text_handler.setFormatter(formatter)
+        logger.addHandler(text_handler)
 
 def browse_path(path_var, logger):
     """Browse and select a directory."""
@@ -135,7 +173,7 @@ def open_developer_settings(root, settings, logger):
     dev_mode_dropdown.pack(fill="x", padx=10, pady=5)
     
     # Create Dummy Files Button
-    ttkb.Button(dev_window, text="Create Dummy Files", bootstyle="info", command=lambda: create_dummy_files(settings.get("base_directory", "~/default_dir"), logger)).pack(pady=10)
+    ttkb.Button(dev_window, text="Create Dummy Files", bootstyle="info", command=lambda: create_dummy_files(os.path.expanduser(settings.get("organisation_folder", "")), logger)).pack(pady=10)
 
     def save_dev_settings():
         settings["developer_mode"] = dev_mode_var.get() == "Enabled"
@@ -210,26 +248,34 @@ def create_dummy_files(base_directory, logger):
         os.makedirs(base_directory, exist_ok=True)
         logger.info(f"Base directory '{base_directory}' created.")
 
-    dummy_files = {
-        "Documents": ["test1.pdf", "test2.docx", "test3.txt"],
-        "Pictures": ["image1.jpg", "image2.png", "image3.gif"],
-        "Videos": ["video1.mp4", "video2.mkv", "video3.avi"],
-        "Archives": ["archive1.zip", "archive2.rar"],
-        "Others": ["random1.exe", "random2.tmp", "random3.log"]
-    }
+    dummy_files = [
+        "test_document.pdf",
+        "image_sample.jpg",
+        "video_clip.mp4",
+        "archive_file.zip",
+        "random_file.txt"
+    ]
 
     try:
-        for category, files in dummy_files.items():
-            for file_name in files:
-                file_path = os.path.join(base_directory, file_name)
-                with open(file_path, "w") as f:
-                    f.write(f"This is a dummy {category} file: {file_name}")
-                logger.info(f"Created dummy file: {file_path}")
+        for file_name in dummy_files:
+            file_path = os.path.join(base_directory, file_name)
+            with open(file_path, "w") as f:
+                f.write(f"This is a dummy file: {file_name}")
+            logger.info(f"Created dummy file: {file_path}")
 
-        messagebox.showinfo("Dummy Files Created", f"Dummy files have been created in '{base_directory}'.")
+        # Only show messagebox if running in a GUI context
+        try:
+            from tkinter import messagebox
+            messagebox.showinfo("Dummy Files Created", f"Dummy files have been created in '{base_directory}'.")
+        except Exception:
+            pass
     except Exception as e:
         logger.error(f"Error creating dummy files: {e}")
-        messagebox.showerror("Error", f"An error occurred while creating dummy files: {e}")
+        try:
+            from tkinter import messagebox
+            messagebox.showerror("Error", f"An error occurred while creating dummy files: {e}")
+        except Exception:
+            pass
 
 def add_menubar_with_settings(window, style, settings, save_settings, logger):
     """Add a menubar with settings to the main window."""
@@ -394,7 +440,7 @@ def run():
         logger.error(f"Failed to load theme '{theme_name}'. Falling back to default theme 'flatly'. Error: {e}")
         style.theme_use("flatly")
     base_directory_var = tk.StringVar(value=os.path.expanduser("~/default_dir"))
-    check_first_run(os.path.expanduser("~/default_dir/config"), base_directory_var, logger)
+    check_first_run(os.path.expanduser("~/default_dir/config"), base_directory_var, settings, save_settings, logger)
     setup_ui(root, base_path_var, rules, config_directory, style, settings, logger)
     logger.info("Starting TaskMover application.")
 

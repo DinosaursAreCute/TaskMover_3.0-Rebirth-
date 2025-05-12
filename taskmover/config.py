@@ -40,12 +40,46 @@ def create_default_rules(config_path):
     Returns:
         dict: Dictionary of default rules.
     """
-    default_dir = os.path.expanduser("~/default_dir")
+    user_dir = os.path.expanduser("~/")
     default_rules = {
-        "Pictures": {"patterns": ["*.jpg", "*.png"], "path": os.path.join(default_dir, "Pictures"),"unzip":False, "active": True},
-        "Documents": {"patterns": ["*.pdf", "*.docx"], "path": os.path.join(default_dir, "Documents"),"unzip":False, "active": True},
+        "Documents": {
+            "patterns": ["*.pdf", "*.docx", "*.txt", "*.xlsx", "*.csv", "*.pptx"],
+            "path": os.path.join(user_dir, "Documents"),
+            "unzip": False,
+            "active": False
+        },
+        "Pictures": {
+            "patterns": ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp"],
+            "path": os.path.join(user_dir, "Pictures"),
+            "unzip": False,
+            "active": False
+        },
+        "Compressed": {
+            "patterns": ["*.zip", "*.rar", "*.7z", "*.tar.gz"],
+            "path": os.path.join(user_dir, "Compressed"),
+            "unzip": True,
+            "active": False
+        },
+        "Videos": {
+            "patterns": ["*.mp4", "*.mkv", "*.avi", "*.mov"],
+            "path": os.path.join(user_dir, "Videos"),
+            "unzip": False,
+            "active": False
+        },
+        "Music": {
+            "patterns": ["*.mp3", "*.wav", "*.flac"],
+            "path": os.path.join(user_dir, "Music"),
+            "unzip": False,
+            "active": False
+        },
+        "Executables": {
+            "patterns": ["*.exe", "*.msi"],
+            "path": os.path.join(user_dir, "Executables"),
+            "unzip": False,
+            "active": False
+        }
     }
-    os.makedirs(default_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
     save_rules(config_path, default_rules)
     return default_rules
 
@@ -64,9 +98,9 @@ def load_settings(settings_path):
     if not os.path.exists(settings_path):
         return {
             "base_directory": "",
-            "theme": "flatly",
-            "developer_mode": False,
-            "logging_level": "INFO",
+            "theme": "superhero",
+            "developer_mode": True,
+            "logging_level": "DEBUG",
             "accent_color": "#FFFFFF",
             "background_color": "#FFFFFF",
             "text_color": "#000000",

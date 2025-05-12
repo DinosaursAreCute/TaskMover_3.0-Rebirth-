@@ -1,4 +1,38 @@
 # Changelog
+
+## [2.0.0] - 2025-05-12
+### Major Changes
+- Major UI and UX improvements for rule management and settings.
+- Added full test automation for settings, dummy file creation, UI integration, themes, and color application.
+- Colorful, detailed test logging for all automated tests.
+- Expanded documentation and test case coverage.
+- Improved error handling and logging throughout the application.
+- Enhanced theme and color customization for the UI.
+- Added developer tools and advanced logging for debugging.
+- Improved compatibility with Windows and cross-platform environments.
+
+### Fixed
+- Fixed the "Browse" button in the rule edit window to be available and functional.
+- Fixed UI issues with the "Save" and "Cancel" buttons in the developer settings window.
+- Fixed dummy file creation to work in all scenarios.
+- Fixed UI bugs and improved widget layout.
+- Fixed bugs where colors could not be changed
+- Fixed issue where theme could not be changed
+- Fixed issue where ui would sometimes not load
+- Fixed issue where rules would not display filepath
+- Fixed issue where patterns would not correctly display
+- Fixed issue where user could not change organisation directory
+- Fixed issue where settings would not be saved properly 
+- FIxed issue where settings for color  and loggers would not get saved 
+- Fixed issue where settings would not get loaded properly 
+
+
+### Known Bugs
+- [] Default colors do not match themes default colors resulting in wrong colors until
+     color reset.
+     
+---
+
 ## [1.2.1.5] - 2025-05-12
 ### Added
 
