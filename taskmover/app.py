@@ -7,9 +7,9 @@ import ttkbootstrap as ttkb
 
 from .config import load_rules, create_default_rules, save_rules, load_settings, save_settings
 from .file_operations import organize_files, move_file, start_organization  # Import move_file to fix NameError
-from .ui_helpers import center_window, add_menubar_with_settings, trigger_developer_function, update_rule_list, enable_all_rules, disable_all_rules, delete_rule, delete_multiple_rules, edit_rule  # Ensure these are imported
 from .logging_config import configure_logger
 from taskmover.rule_operations import add_rule
+from taskmover.utils import center_window
 
 def check_first_run(config_directory, base_directory_var, logger):
     """Check if this is the first run and prompt for base directory setup."""

@@ -42,6 +42,11 @@ def browse_path(base_path_var, logger):
 def run():
     logger = configure_logger()
 
+    # Check if a display is available
+    if not os.environ.get("DISPLAY"):
+        logger.error("No display found. Ensure you are running this application in an environment with GUI support.")
+        sys.exit("Error: No display found. This application requires a graphical environment.")
+
     # Define configuration paths
     config_directory = os.path.expanduser("~/default_dir/config")
     ensure_directory_exists(config_directory, logger)

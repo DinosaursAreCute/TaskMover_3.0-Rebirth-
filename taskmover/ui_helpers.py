@@ -10,16 +10,9 @@ from taskmover.config import save_rules
 import colorlog  # Import colorlog for colored console logging
 from taskmover.file_operations import organize_files
 from taskmover.rule_operations import add_rule
+from taskmover.utils import center_window
 
 logger = logging.getLogger("TaskMover")
-
-def center_window(window):
-    """Center a window on the screen."""
-    window.update_idletasks()
-    width, height = window.winfo_width(), window.winfo_height()
-    x = (window.winfo_screenwidth() // 2) - (width // 2)
-    y = (window.winfo_screenheight() // 2) - (height // 2)
-    window.geometry(f'{width}x{height}+{x}+{y}')
 
 def add_menubar(window):
     menubar = Menu(window)
