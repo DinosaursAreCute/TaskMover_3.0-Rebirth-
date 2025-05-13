@@ -120,8 +120,7 @@ For detailed documentation, refer to:
 - [Requirements](./requirements.txt): List of dependencies.
 
 ## Known Bugs
-- [ ] **Browse Button**: The "Browse" button is currently not available in some parts of the application.
-- [ ] **Dummy Files**: Creating dummy files does not work as expected in certain scenarios.
+- ** [] On linux system, program will crash when user tries to unfocus settings window due to a window sound call 
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
