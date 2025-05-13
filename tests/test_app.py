@@ -31,7 +31,7 @@ def log_decorator(fn):
             fn(self, *args, **kwargs)
             log_test("finished", "passed", test_name, "Test passed")
         except Exception as e:
-            log_test("stopped", "failed", test_name, f"Test failed: {e}")
+            log_test(" stopped", "failed", test_name, f"Test failed: {e}")
             raise
     return wrapper
 
