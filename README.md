@@ -21,6 +21,7 @@ TaskMover is a Python-based file organization tool that allows users to define r
 - `tkinter`
 
 ### External Python Libraries (Require Installation)
+### Installing Dependencies on Windows
 1. **ttkbootstrap**  
    Install with:
    ```bash
@@ -39,6 +40,37 @@ TaskMover is a Python-based file organization tool that allows users to define r
 
 Or simply:
 ```bash
+pip install -r requirements.txt
+```
+
+
+### Installing Dependencies on Linux
+For Linux users, follow the steps below based on your distribution:
+
+ **Warning:** Linux support is currently limited due to windows specific calls. Will be fixed in a later update.
+
+#### Ubuntu/Debian
+```bash
+sudo apt update
+sudo apt install -y python3 python3-pip
+pip install -r requirements.txt
+```
+
+#### Fedora
+```bash
+sudo dnf install -y python3 python3-pip
+pip install -r requirements.txt
+```
+
+#### Arch Linux
+```bash
+sudo pacman -Sy python python-pip
+pip install -r requirements.txt
+```
+
+#### openSUSE
+```bash
+sudo zypper install -y python3 python3-pip
 pip install -r requirements.txt
 ```
 
