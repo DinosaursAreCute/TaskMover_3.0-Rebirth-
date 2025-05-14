@@ -46,7 +46,19 @@ def organize_files(settings, rules, logger):
         rules (dict): Dictionary of rules for organizing files.
         logger (logging.Logger): Logger for logging updates.
     """
+    # Load organization folder from settings
+    organisation_folder = settings.get("organisation_folder", "")
+    if not organisation_folder or not os.path.exists(organisation_folder):
+        logger.error(f"Directory '{organisation_folder}' does not exist.")
+        return
+    # Get the list of files and total files
+    files = [item for item in os.listdir(organisation_folder) if os.path.isfile(os.path.join(organisation_folder, item))]
+    total_files = len(files)
+
     # Create a progress bar window
+    root = Toplevel()  
+    root.withdraw()  
+
     progress_window = Toplevel(root)
     progress_window.title("Organizing Files")
     progress_window.geometry("400x200")
