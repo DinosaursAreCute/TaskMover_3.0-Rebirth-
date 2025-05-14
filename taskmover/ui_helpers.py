@@ -179,7 +179,14 @@ def open_settings_window(root, settings, save_settings, logger):
 
     # Prevent the user from closing or moving focus without saving or discarding
     def on_closing():
-        winsound.MessageBeep(winsound.MB_ICONHAND)  # Play error sound
+        if os.name == 'nt':  # Windows
+            winsound.MessageBeep(winsound.MB_ICONHAND)  # Play error sound
+        elif os.name == 'posix':  # Linux or macOS
+            try:
+                import subprocess
+                subprocess.run(['paplay', '/usr/share/sounds/freedesktop/stereo/dialog-error.oga'], check=True)
+            except Exception:
+                print("Error sound not available on this system.")
         messagebox.showerror("Error", "You must save or discard changes before closing the settings window.")
 
     settings_window.protocol("WM_DELETE_WINDOW", on_closing)
