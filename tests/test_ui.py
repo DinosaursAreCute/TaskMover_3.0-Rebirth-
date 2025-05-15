@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import tkinter as tk
 import sys
 import os
@@ -45,6 +45,9 @@ from taskmover.ui_helpers import update_rule_list
 
 class TestUI(unittest.TestCase):
     def setUp(self):
+        # Skip tests if no display is available (headless environment)
+        if os.environ.get("DISPLAY", "") == "":
+            self.skipTest("No display available.")
         self.root = tk.Tk()
         self.root.geometry("900x700")
         self.rules = {
@@ -63,7 +66,6 @@ class TestUI(unittest.TestCase):
 
     @log_decorator
     def test_buttons_integration(self):
-        """Test if buttons for adding, removing, enabling, and disabling rules are integrated."""
         setup_ui(self.root, tk.StringVar(value="C:/"), self.rules, self.config_directory, self.style, self.settings, self.logger)
         button_frame = None
         for child in self.root.winfo_children():
@@ -78,7 +80,6 @@ class TestUI(unittest.TestCase):
 
     @log_decorator
     def test_rule_list_update(self):
-        """Test if the rule list updates correctly."""
         rule_frame = tk.Frame(self.root)
         update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
         children = rule_frame.winfo_children()
@@ -86,7 +87,6 @@ class TestUI(unittest.TestCase):
 
     @log_decorator
     def test_rule_list_update_empty(self):
-        """Test rule list update with empty rules."""
         rule_frame = tk.Frame(self.root)
         update_rule_list(rule_frame, {}, self.config_directory, self.logger)
         children = rule_frame.winfo_children()
@@ -94,14 +94,12 @@ class TestUI(unittest.TestCase):
 
     @log_decorator
     def test_rule_list_update_logger_called(self):
-        """Test that logger is called during rule list update."""
         rule_frame = tk.Frame(self.root)
         update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
         self.assertTrue(self.logger.info.called or self.logger.debug.called or self.logger.warning.called or self.logger.error.called)
 
     @log_decorator
     def test_all_ttkbootstrap_themes(self):
-        """Test that all ttkbootstrap themes can be applied without error."""
         available_themes = ttkb.Style().theme_names()
         for theme in available_themes:
             try:
@@ -113,7 +111,6 @@ class TestUI(unittest.TestCase):
 
     @log_decorator
     def test_color_application(self):
-        """Test applying a few colors to a widget's background."""
         test_colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF"]
         label = tk.Label(self.root, text="Color Test")
         label.pack()

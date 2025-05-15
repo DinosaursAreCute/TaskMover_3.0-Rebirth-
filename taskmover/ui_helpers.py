@@ -13,13 +13,13 @@ from ttkbootstrap.constants import *
 import os
 import winsound  # Import winsound for playing error sounds
 
-from .shared import reset_colors, show_license_info, browse_path
+from taskmover.shared import reset_colors, show_license_info, browse_path
 
-from .config import load_settings, save_rules
+from taskmover.config import load_settings, save_rules
 import colorlog  # Import colorlog for colored console logging
-from .file_operations import organize_files
-from .rule_operations import add_rule
-from .utils import center_window
+from taskmover.file_operations import organize_files
+from taskmover.rule_operations import add_rule
+from taskmover.utils import center_window
 
 logger = logging.getLogger("TaskMover")
 
@@ -179,7 +179,14 @@ def open_settings_window(root, settings, save_settings, logger):
 
     # Prevent the user from closing or moving focus without saving or discarding
     def on_closing():
-        winsound.MessageBeep(winsound.MB_ICONHAND)  # Play error sound
+        if os.name == 'nt':  # Windows
+            winsound.MessageBeep(winsound.MB_ICONHAND)  # Play error sound
+        elif os.name == 'posix':  # Linux or macOS
+            try:
+                import subprocess
+                subprocess.run(['paplay', '/usr/share/sounds/freedesktop/stereo/dialog-error.oga'], check=True)
+            except Exception:
+                print("Error sound not available on this system.")
         messagebox.showerror("Error", "You must save or discard changes before closing the settings window.")
 
     settings_window.protocol("WM_DELETE_WINDOW", on_closing)

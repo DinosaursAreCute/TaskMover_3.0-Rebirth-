@@ -1,0 +1,4 @@
+# Required Python packages
+# Add any additional dependencies here
+ttkbootstrap
+yaml
