@@ -115,8 +115,7 @@ For detailed documentation, refer to:
 
 ## Known Bugs
 
-- [ ] **Browse Button**: The "Browse" button is currently not available in some parts of the application.
-- [ ] **Dummy Files**: Creating dummy files does not work as expected in certain scenarios.
+see project 
 
 ## License
 
