@@ -47,7 +47,6 @@ pip install -r requirements.txt
 ### Installing Dependencies on Linux
 For Linux users, follow the steps below based on your distribution:
 
-## ⚠ **Warning:** Linux support is currently limited due to windows specific calls ⚠
 
 #### Ubuntu/Debian
 ```bash
