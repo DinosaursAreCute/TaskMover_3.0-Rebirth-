@@ -112,9 +112,15 @@ def load_settings(settings_path):
             }
         }
 
-    with open(settings_path, "r") as file:
-        import yaml
-        return yaml.safe_load(file)
+    import yaml
+    try:
+        with open(settings_path, "r") as file:
+            data = yaml.safe_load(file)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load settings: {e}")
+    if not isinstance(data, dict):
+        raise RuntimeError("Settings file is invalid or not a dictionary.")
+    return data
 
 def save_settings(settings_path, settings, logger=None):
     """Save application settings to a configuration file."""
