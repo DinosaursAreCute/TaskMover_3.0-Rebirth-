@@ -111,11 +111,17 @@ class TestApp(unittest.TestCase):
 
     @log_decorator
     def test_load_settings_invalid_file(self):
-        # Write invalid yaml
-        with open(self.test_settings_path, "w") as f:
-            f.write(":invalid_yaml:")
-        with self.assertRaises(Exception):
-            load_settings(self.test_settings_path)
+        """Test loading an invalid settings file."""
+        invalid_settings_path = "invalid_settings.yml"
+        with open(invalid_settings_path, "w") as file:
+            file.write("invalid: [this, is, not, a, dict]")
+
+        # Test loading the invalid settings file
+        with self.assertRaises(RuntimeError):
+            load_settings(invalid_settings_path)
+
+        # Clean up
+        os.remove(invalid_settings_path)
 
 if __name__ == "__main__":
     unittest.main()

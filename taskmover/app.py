@@ -8,23 +8,22 @@ handles user interactions.
 import os
 import tkinter as tk
 import logging
-from tkinter import Menu, filedialog, messagebox, simpledialog, colorchooser  # Import colorchooser for askcolor
-import yaml  # Import yaml to fix NameError
+from tkinter import Menu, filedialog, messagebox, simpledialog, colorchooser  
 import ttkbootstrap as ttkb
 import tkinter.scrolledtext as scrolledtext
 
-from .config import load_rules, create_default_rules, save_rules, load_settings, save_settings
-from .file_operations import organize_files, move_file, start_organization  # Fixed relative import
-from .logging_config import configure_logger
-from .rule_operations import add_rule
-from .utils import center_window
-from .utils import ensure_directory_exists
-from .config import load_or_initialize_rules
-from .ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
-from .shared import reset_colors, show_license_info, browse_path
-from .debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
-from .ui_helpers import open_settings_window
-from .ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules
+from taskmover.config import save_rules, load_settings, save_settings 
+from taskmover.file_operations import start_organization  
+from taskmover.logging_config import configure_logger
+from taskmover.rule_operations import add_rule
+from taskmover.utils import center_window
+from taskmover.utils import ensure_directory_exists
+from taskmover.config import load_or_initialize_rules
+from taskmover.ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
+from taskmover.shared import show_license_info  
+from taskmover.debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
+from taskmover.ui_helpers import open_settings_window
+from taskmover.ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules
 
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
 
@@ -99,7 +98,7 @@ def main(rules, logger):
 def setup_ui(root, base_path_var, rules, config_directory, style, settings, logger):
     """Set up the user interface."""
     # Apply settings on startup
-    from .config import apply_settings
+    from taskmover.config import apply_settings  # Replace relative import with absolute import
     apply_settings(root, settings, logger)
 
     # Add Menubar
@@ -443,6 +442,7 @@ def run():
     check_first_run(os.path.expanduser("~/default_dir/config"), base_directory_var, settings, save_settings, logger)
     setup_ui(root, base_path_var, rules, config_directory, style, settings, logger)
     logger.info("Starting TaskMover application.")
+    
 
     # Debugging utilities integration
     if enable_debug_lines:

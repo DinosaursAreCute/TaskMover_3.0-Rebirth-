@@ -11,6 +11,20 @@
 - Added developer tools and advanced logging for debugging.
 - Improved compatibility with Windows and cross-platform environments.
 
+## [2025-05-15] Codebase and Test Improvements
+
+- The `load_settings` function now strictly validates the settings file and raises a `RuntimeError` if the file is invalid or missing required keys.
+- UI tests are automatically skipped in headless environments (when no display is available), making CI and remote testing more robust.
+- The test suite was refactored for better compatibility with Tkinter/ttkbootstrap and to avoid false negatives in CI.
+- Exception handling and import issues were fixed for more reliable script and test execution.
+
+### How to run tests in headless environments
+- GUI-related tests will be skipped if no display is detected (e.g., on CI servers or remote shells).
+- To run all tests, ensure a display is available (e.g., run locally on your desktop or use a virtual display on Linux).
+
+### How to handle settings files
+- The application expects a valid YAML settings file with all required keys. If the file is missing or invalid, a `RuntimeError` will be raised and should be handled appropriately.
+
 ## Overview
 
 TaskMover is a file organization tool designed to help users manage and organize their files efficiently. It provides a user-friendly interface and customizable rules for file organization.
