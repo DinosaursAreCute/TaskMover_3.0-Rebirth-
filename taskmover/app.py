@@ -21,7 +21,7 @@ from .utils import center_window
 from .utils import ensure_directory_exists
 from .config import load_or_initialize_rules
 from .ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
-from .shared import reset_colors, show_license_info, browse_path
+from .utils import reset_colors, show_license_info, browse_path
 from .debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
 from .ui_helpers import open_settings_window
 from .ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules

@@ -13,7 +13,7 @@ from ttkbootstrap.constants import *
 import os
 import winsound  # Import winsound for playing error sounds
 
-from .shared import reset_colors, show_license_info, browse_path
+from .utils import reset_colors, show_license_info, browse_path
 
 from .config import load_settings, save_rules
 import colorlog  # Import colorlog for colored console logging
