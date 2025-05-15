@@ -9,11 +9,34 @@ import os
 import shutil
 import fnmatch
 import zipfile
-from tkinter import messagebox
+from tkinter import messagebox, Toplevel
+from tkinter import ttk
 import logging
 
 logger = logging.getLogger("FileOperations")
+def organize_files(settings, rules, logger, organisation_folder=None):
+    """
+    Organize files in the organization folder based on rules.
 
+    Args:
+        settings (dict): Application settings containing the organization folder.
+        rules (dict): Dictionary of rules for organizing files.
+        logger (logging.Logger): Logger for logging updates.
+    """
+    # Access the organization folder from settings if not provided
+    if not organisation_folder:
+        organisation_folder = settings.get("organisation_folder", "")
+    if not organisation_folder or not os.path.exists(organisation_folder):
+        logger.error(f"Directory '{organisation_folder}' does not exist.")
+        return
+
+    # Initialize root for Toplevel
+    root = Toplevel()
+    root.withdraw()  # Hide the root window
+
+    # Get the list of files and total files
+    files = [item for item in os.listdir(organisation_folder) if os.path.isfile(os.path.join(organisation_folder, item))]
+    total_files = len(files)
 def organize_files(settings, rules, logger):
     """
     Organize files in the organization folder based on rules.
@@ -23,16 +46,50 @@ def organize_files(settings, rules, logger):
         rules (dict): Dictionary of rules for organizing files.
         logger (logging.Logger): Logger for logging updates.
     """
-    organisation_folder = settings.get("organisation_folder")
+    # Load organization folder from settings
+    organisation_folder = settings.get("organisation_folder", "")
     if not organisation_folder or not os.path.exists(organisation_folder):
         logger.error(f"Directory '{organisation_folder}' does not exist.")
         return
-
+    # Get the list of files and total files
     files = [item for item in os.listdir(organisation_folder) if os.path.isfile(os.path.join(organisation_folder, item))]
-    logger.info(f"Found {len(files)} files in '{organisation_folder}'.")
+    total_files = len(files)
 
-    for file_name in files:
-        move_file(os.path.join(organisation_folder, file_name), organisation_folder, rules, logger)
+    # Create a progress bar window
+    root = Toplevel()  
+    root.withdraw()  
+
+    progress_window = Toplevel(root)
+    progress_window.title("Organizing Files")
+    progress_window.geometry("400x200")
+    ttk.Label(progress_window, text="Organizing files, please wait...").pack(pady=10)
+    
+    # Progress bar
+    progress_bar = ttk.Progressbar(progress_window, orient="horizontal", length=300, mode="determinate")
+    progress_bar.pack(pady=10)
+    progress_bar["maximum"] = total_files
+
+    # Label to display the current file being processed
+    current_file_label = ttk.Label(progress_window, text="Current file: None")
+    current_file_label.pack(pady=10)
+
+    for index, file_name in enumerate(files, start=1):
+        file_path = os.path.join(organisation_folder, file_name)
+        logger.info(f"Processing file {index}/{total_files}: {file_name}")
+        
+        # Update the current file label
+        current_file_label.config(text=f"Current file: {file_name}")
+        progress_window.update_idletasks()
+
+        # Process the file
+        move_file(file_path, organisation_folder, rules, logger)
+
+        # Update progress bar
+        progress_bar["value"] = index
+        progress_window.update_idletasks()
+
+    logger.info("File organization completed.")
+    progress_window.destroy()
 
 def move_file(file_path, organization_folder, rules, logger):
     """

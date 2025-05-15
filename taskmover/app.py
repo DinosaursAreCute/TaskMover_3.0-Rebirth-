@@ -443,6 +443,7 @@ def run():
     check_first_run(os.path.expanduser("~/default_dir/config"), base_directory_var, settings, save_settings, logger)
     setup_ui(root, base_path_var, rules, config_directory, style, settings, logger)
     logger.info("Starting TaskMover application.")
+    
 
     # Debugging utilities integration
     if enable_debug_lines:

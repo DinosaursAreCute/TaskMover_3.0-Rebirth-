@@ -11,7 +11,7 @@ env/
 
 # Logs
 *.log
-*.txt
+
 
 # Config and settings
 default_dir/
