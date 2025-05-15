@@ -6,7 +6,7 @@ when the script is run as the main program.
 """
 
 try:
-    from .app import run
+    from taskmover.app import run
 except ImportError:
     from app import run
 

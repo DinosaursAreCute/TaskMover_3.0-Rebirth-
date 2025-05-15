@@ -13,13 +13,13 @@ from ttkbootstrap.constants import *
 import os
 import winsound  # Import winsound for playing error sounds
 
-from .shared import reset_colors, show_license_info, browse_path
+from taskmover.shared import reset_colors, show_license_info, browse_path
 
-from .config import load_settings, save_rules
+from taskmover.config import load_settings, save_rules
 import colorlog  # Import colorlog for colored console logging
-from .file_operations import organize_files
-from .rule_operations import add_rule
-from .utils import center_window
+from taskmover.file_operations import organize_files
+from taskmover.rule_operations import add_rule
+from taskmover.utils import center_window
 
 logger = logging.getLogger("TaskMover")
 

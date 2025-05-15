@@ -112,18 +112,44 @@ def load_settings(settings_path):
             }
         }
 
-    with open(settings_path, "r") as file:
-        import yaml
-        return yaml.safe_load(file)
+    try:
+        with open(settings_path, "r") as file:
+            import yaml
+            settings = yaml.safe_load(file)
+            # Strict validation: must be a dict and contain required keys
+            required_keys = [
+                "base_directory", "theme", "developer_mode", "logging_level",
+                "accent_color", "background_color", "text_color", "logging_components"
+            ]
+            if not isinstance(settings, dict) or not all(k in settings for k in required_keys):
+                raise ValueError("Settings file is not a valid TaskMover settings dictionary.")
+            return settings
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Settings file not found: {settings_path}")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Error parsing YAML settings file: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to load settings: {e}")
 
 def save_settings(settings_path, settings, logger=None):
     """Save application settings to a configuration file."""
+    import os
+    import yaml
+
     try:
         os.makedirs(os.path.dirname(settings_path), exist_ok=True)
         with open(settings_path, "w") as file:
             yaml.dump(settings, file)
         if logger:
             logger.info(f"Settings saved successfully to {settings_path}.")
+    except FileNotFoundError:
+        if logger:
+            logger.error(f"Settings path not found: {settings_path}")
+        raise FileNotFoundError(f"Settings path not found: {settings_path}")
+    except yaml.YAMLError as e:
+        if logger:
+            logger.error(f"Error writing YAML settings file: {e}")
+        raise ValueError(f"Error writing YAML settings file: {e}")
     except Exception as e:
         if logger:
             logger.error(f"Failed to save settings: {e}")
