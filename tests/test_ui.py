@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import tkinter as tk
 import sys
 import os
@@ -32,6 +32,15 @@ def log_decorator(fn):
         try:
             fn(self, *args, **kwargs)
             log_test("finished", "passed", test_name, "Test passed")
+        except unittest.SkipTest as e:
+            # Log skipped tests with a different color and state
+            COLOR_SKIPPED = "\033[94m"  # Blue
+            elapsed = time.time() - DEPLOY_TIME
+            print(f"{COLOR_YELLOW}[{elapsed:.2f}s]{COLOR_RESET} "
+                  f"{COLOR_SKIPPED}[skipped]{COLOR_RESET} "
+                  f"{COLOR_SKIPPED}[skipped]{COLOR_RESET} "
+                  f"{COLOR_CYAN}[{test_name}]{COLOR_RESET} Test skipped: {e}")
+            raise
         except Exception as e:
             log_test("stopped", "failed", test_name, f"Test failed: {e}")
             raise
@@ -45,9 +54,6 @@ from taskmover.ui_helpers import update_rule_list
 
 class TestUI(unittest.TestCase):
     def setUp(self):
-        # Skip tests if no display is available (headless environment)
-        if os.environ.get("DISPLAY", "") == "":
-            self.skipTest("No display available.")
         self.root = tk.Tk()
         self.root.geometry("900x700")
         self.rules = {

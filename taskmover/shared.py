@@ -3,6 +3,9 @@ Shared utility functions for the TaskMover application.
 
 This module provides common utilities such as resetting colors, displaying
 license information, and browsing directories.
+
+This module has been migrated to utils.py for better structure.
+All previous functions (reset_colors, show_license_info, browse_path) are now in utils.py.
 """
 
 import os

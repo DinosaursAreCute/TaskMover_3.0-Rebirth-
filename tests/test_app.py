@@ -123,5 +123,6 @@ class TestApp(unittest.TestCase):
         # Clean up
         os.remove(invalid_settings_path)
 
+
 if __name__ == "__main__":
     unittest.main()
