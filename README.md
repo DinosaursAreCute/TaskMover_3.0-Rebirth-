@@ -156,3 +156,24 @@ see project
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
+
+## Theme Management (v2.0+)
+
+TaskMover now features a fully integrated Theme Manager for customizing the application's appearance. The previous Colors tab has been removed. All theme management is now handled in the Theme Manager tab within Settings.
+
+- **Built-in themes** are available for quick selection but cannot be edited or overwritten.
+- **Custom themes** can be created, edited, saved, applied, and deleted using the Theme Manager.
+- Only custom themes are editable. Built-in themes are read-only.
+- Custom themes appear in the main theme selector in the General tab.
+- All theme changes are applied live, and only supported widgets are styled (no more errors for Menubar, Listbox, or Text styling).
+
+### How to Use the Theme Manager
+
+1. Open the **Settings** window from the menu.
+2. Go to the **Theme Manager** tab.
+3. Select a custom theme to edit, or create a new one.
+4. Adjust colors for supported widgets and save your changes.
+5. Apply your custom theme to see changes instantly.
+6. Only custom themes can be deleted or modified.
+
+> **Note:** The Colors tab has been removed. All color and theme customization is now centralized in the Theme Manager.

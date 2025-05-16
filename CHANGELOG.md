@@ -2,20 +2,33 @@
 
 ## [Unreleased] - 2025-05-16
 
-### UI/UX Changes
+### Major UI/UX and Theme System Changes
 
-- Progress window label changed from 'Organizing files, please wait...' to 'File organization in progress...'.
-- When file organization completes, the label now updates to 'File organization complete.'
+- Modularized UI logic into helper modules (e.g., ui_menu_helpers.py, ui_rule_helpers.py, etc.) for maintainability and clarity.
+- Added a Theme Manager tab for full CRUD (create, read, update, delete) on custom themes.
+- Removed the Colors tab; all theme management is now in the Theme Manager tab.
+- Only custom themes are editable; built-in themes cannot be overwritten or modified.
+- Custom themes are now included in the main theme selector in the General tab.
+- Fixed all major theme application errors (e.g., no more attempts to style unsupported widgets like Menubar, Listbox, or Text via ttkbootstrap).
+- Suppressed info popups for theme save/apply actions for a smoother workflow.
+- Cleaned up all __pycache__ folders and checked for other unnecessary files.
+- Added type hints and docstrings to all major functions in ui_settings_helpers.py and other helpers.
+- Updated and clarified documentation for theme management and UI structure.
 
-### Changed
+### Bug Fixes
 
-- Improved `load_settings` to strictly validate settings and raise `RuntimeError` for invalid files.
-- UI tests now skip automatically in headless environments (no display), improving CI reliability.
-- Refactored test suite for better compatibility with Tkinter/ttkbootstrap and headless systems.
+- Prevented crashes related to unsupported style keys (e.g., Menubar, Listbox, Text).
+- Fixed all crashes related to theme application and widget styling.
+- Fixed logic to prevent built-in theme modification.
+- Fixed all references to removed Colors tab and legacy color logic.
 
-### Fixed
+### Developer/Codebase
 
-- Fixed import and exception handling issues for robust test and script execution.
+- Broke circular imports and standardized function signatures across UI modules.
+- Used PowerShell Remove-Item to clean up bytecode and __pycache__ folders.
+- Improved code documentation and maintainability.
+
+---
 
 ## [2.0.0] - 2025-05-12
 

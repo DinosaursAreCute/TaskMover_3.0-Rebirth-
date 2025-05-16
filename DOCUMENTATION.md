@@ -389,6 +389,31 @@ enable_all_rules(rules, config_path, rule_frame, logger)
 disable_all_rules(rules, config_path, rule_frame, logger)
 ```
 
+## Theme System and UI Structure (v2.0+)
+
+### Theme Manager
+
+- The Theme Manager tab in Settings is now the single place for all theme customization.
+- You can create, edit, save, apply, and delete custom themes.
+- Only custom themes are editable; built-in themes are read-only and cannot be overwritten.
+- Custom themes are included in the main theme selector in the General tab.
+- All theme changes are applied live, and only supported widgets are styled (no more errors for Menubar, Listbox, or Text styling).
+
+### Removal of Colors Tab
+
+- The previous Colors tab has been removed for simplicity and to avoid confusion.
+- All color and theme customization is now centralized in the Theme Manager.
+
+### How to Use
+
+1. Open the Settings window from the menu.
+2. Go to the Theme Manager tab.
+3. Select or create a custom theme.
+4. Edit widget/button colors as desired.
+5. Save and apply your custom theme.
+
+---
+
 ## `tests/test_app.py`
 
 ### `TestApp`

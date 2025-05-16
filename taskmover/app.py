@@ -146,7 +146,8 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     ttkb.Button(button_frame, text="Enable All Rules", style="success.TButton", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Disable All Rules", style="danger.TButton", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Delete Multiple Rules", style="warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
+    # When creating warning buttons, use style="Warning.TButton" instead of "warning.TButton"
+    ttkb.Button(button_frame, text="Delete Multiple Rules", style="Warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
     
     def show_organization_progress():
         # Close any existing progress window before opening a new one
@@ -200,7 +201,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
 
     # Show log display widget only in developer mode
     if settings.get("developer_mode", False):
-        log_frame = ttkb.Frame(root, padding=5, bootstyle="secondary")
+        log_frame = ttkb.Frame(root, padding=5)
         log_frame.pack(fill="both", expand=False, padx=10, pady=(0,10), side="bottom")
         log_label = ttkb.Label(log_frame, text="Application Log:", font=("Arial", 15, "bold"))
         log_label.pack(anchor="w")
