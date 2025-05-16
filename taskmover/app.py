@@ -151,7 +151,10 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
         progress_win.transient(root)
         progress_win.grab_set()  # Prevent interaction with main window
         # Do not set always-on-top or force focus
-        ttkb.Label(progress_win, text="Organizing files, please wait...").pack(pady=10)
+
+        progress_label = ttkb.Label(progress_win, text="Organizing files, please wait...")
+        progress_label.pack(pady=10)
+
         progress_bar = ttkb.Progressbar(progress_win, orient="horizontal", length=400, mode="determinate")
         progress_bar.pack(pady=10)
         file_listbox = tk.Listbox(progress_win, height=10)
@@ -174,6 +177,8 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
             file_listbox.yview_moveto(1)
             progress_win.update_idletasks()
         start_organization(settings, rules, logger, progress_callback=progress_callback, file_moved_callback=file_moved_callback)
+        # Update label when organization is complete
+        progress_label.config(text="File organization complete.")
         # Do not close the window automatically; user can close it manually
         progress_win.grab_release()  # Release grab when done (optional, if you add a close button)
 
@@ -183,7 +188,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     if settings.get("developer_mode", False):
         log_frame = ttkb.Frame(root, padding=5, bootstyle="secondary")
         log_frame.pack(fill="both", expand=False, padx=10, pady=(0,10), side="bottom")
-        log_label = ttkb.Label(log_frame, text="Application Log:", font=("Helvetica", 10, "bold"))
+        log_label = ttkb.Label(log_frame, text="Application Log:", font=("Arial", 15, "bold"))
         log_label.pack(anchor="w")
         log_widget = scrolledtext.ScrolledText(log_frame, height=8, state="normal", wrap="word")
         log_widget.pack(fill="both", expand=True)

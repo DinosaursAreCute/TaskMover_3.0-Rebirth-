@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased] - 2025-05-15
+## [Unreleased] - 2025-05-16
+
+### UI/UX Changes
+
+- Progress window label changed from 'Organizing files, please wait...' to 'File organization in progress...'.
+- When file organization completes, the label now updates to 'File organization complete.'
 
 ### Changed
 
