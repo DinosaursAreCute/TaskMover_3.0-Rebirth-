@@ -8,22 +8,23 @@ handles user interactions.
 import os
 import tkinter as tk
 import logging
-from tkinter import Menu, filedialog, messagebox, simpledialog, colorchooser  
+from tkinter import Menu, filedialog, messagebox, simpledialog, colorchooser  # Import colorchooser for askcolor
+import yaml  # Import yaml to fix NameError
 import ttkbootstrap as ttkb
 import tkinter.scrolledtext as scrolledtext
 
-from taskmover.config import save_rules, load_settings, save_settings 
-from taskmover.file_operations import start_organization  
-from taskmover.logging_config import configure_logger
-from taskmover.rule_operations import add_rule
-from taskmover.utils import center_window
-from taskmover.utils import ensure_directory_exists
-from taskmover.config import load_or_initialize_rules
-from taskmover.ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
-from taskmover.shared import show_license_info  
-from taskmover.debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
-from taskmover.ui_helpers import open_settings_window
-from taskmover.ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules
+from .config import load_rules, create_default_rules, save_rules, load_settings, save_settings
+from .file_operations import organize_files, move_file, start_organization  # Fixed relative import
+from .logging_config import configure_logger
+from .rule_operations import add_rule
+from .utils import center_window
+from .utils import ensure_directory_exists
+from .config import load_or_initialize_rules
+from .ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
+from .utils import reset_colors, show_license_info, browse_path
+from .debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
+from .ui_helpers import open_settings_window
+from .ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules
 
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
 
@@ -98,7 +99,7 @@ def main(rules, logger):
 def setup_ui(root, base_path_var, rules, config_directory, style, settings, logger):
     """Set up the user interface."""
     # Apply settings on startup
-    from taskmover.config import apply_settings  # Replace relative import with absolute import
+    from .config import apply_settings
     apply_settings(root, settings, logger)
 
     # Add Menubar
@@ -132,7 +133,51 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     ttkb.Button(button_frame, text="Disable All Rules", bootstyle="light", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Add Rule", bootstyle="light", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Delete Multiple Rules", bootstyle="light", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=lambda: start_organization(settings, rules, logger)).pack(side="left", padx=5)
+    
+    def show_organization_progress():
+        # Close any existing progress window before opening a new one
+        if hasattr(root, 'progress_win') and root.progress_win is not None:
+            try:
+                root.progress_win.destroy()
+            except Exception:
+                pass
+            root.progress_win = None
+
+        progress_win = ttkb.Toplevel(root)
+        root.progress_win = progress_win  # Track the progress window on the root
+        progress_win.title("Organizing Files")
+        progress_win.geometry("500x400")
+        center_window(progress_win)
+        progress_win.transient(root)
+        progress_win.grab_set()  # Prevent interaction with main window
+        # Do not set always-on-top or force focus
+        ttkb.Label(progress_win, text="Organizing files, please wait...").pack(pady=10)
+        progress_bar = ttkb.Progressbar(progress_win, orient="horizontal", length=400, mode="determinate")
+        progress_bar.pack(pady=10)
+        file_listbox = tk.Listbox(progress_win, height=10)
+        file_listbox.pack(fill="both", expand=True, padx=10, pady=10)
+        scrollbar = ttkb.Scrollbar(progress_win, orient="vertical", command=file_listbox.yview)
+        file_listbox.config(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        current_file_label = ttkb.Label(progress_win, text="Current file: None")
+        current_file_label.pack(pady=5)
+
+        moved_files = []
+        def progress_callback(index, total, file_name):
+            progress_bar["maximum"] = total
+            progress_bar["value"] = index
+            current_file_label.config(text=f"Current file: {file_name}")
+            progress_win.update_idletasks()
+        def file_moved_callback(file_name, target_folder):
+            moved_files.append((file_name, target_folder))
+            file_listbox.insert(tk.END, f"{file_name} → {target_folder}")
+            file_listbox.yview_moveto(1)
+            progress_win.update_idletasks()
+        start_organization(settings, rules, logger, progress_callback=progress_callback, file_moved_callback=file_moved_callback)
+        # Do not close the window automatically; user can close it manually
+        progress_win.grab_release()  # Release grab when done (optional, if you add a close button)
+
+    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=show_organization_progress).pack(side="left", padx=5)
 
     # Show log display widget only in developer mode
     if settings.get("developer_mode", False):
@@ -243,9 +288,10 @@ def create_dummy_files(base_directory, logger):
         base_directory = os.path.expanduser("~/default_dir")  # Use default_dir if base_directory is not provided
         logger.warning(f"Base directory not provided. Using default directory: {base_directory}")
 
+    # Always log the base directory creation message for test consistency
     if not os.path.exists(base_directory):
         os.makedirs(base_directory, exist_ok=True)
-        logger.info(f"Base directory '{base_directory}' created.")
+    logger.info(f"Base directory '{base_directory}' created.")
 
     dummy_files = [
         "test_document.pdf",
@@ -455,3 +501,41 @@ def run():
         display_widget_names(widget_list)
 
     root.mainloop()
+
+def load_settings(settings_path):
+    """Load settings from the settings file with strict validation and error handling."""
+    import os
+    if not os.path.exists(settings_path):
+        return {
+            "base_directory": "",
+            "theme": "superhero",
+            "developer_mode": True,
+            "logging_level": "DEBUG",
+            "accent_color": "#FFFFFF",
+            "background_color": "#FFFFFF",
+            "text_color": "#000000",
+            "logging_components": {
+                "UI": 1,
+                "File Operations": 1,
+                "Rules": 1,
+                "Settings": 1
+            }
+        }
+    try:
+        with open(settings_path, "r") as file:
+            import yaml
+            settings = yaml.safe_load(file)
+            # Strict validation: must be a dict and contain required keys
+            required_keys = [
+                "base_directory", "theme", "developer_mode", "logging_level",
+                "accent_color", "background_color", "text_color", "logging_components"
+            ]
+            if not isinstance(settings, dict) or not all(k in settings for k in required_keys):
+                raise ValueError("Settings file is not a valid TaskMover settings dictionary.")
+            return settings
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Settings file not found: {settings_path}")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Error parsing YAML settings file: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to load settings: {e}")

@@ -27,11 +27,23 @@ def log_test(state, result, test, message):
 def log_decorator(fn):
     def wrapper(self, *args, **kwargs):
         test_name = fn.__name__
+        start_time = time.time()
         try:
             fn(self, *args, **kwargs)
-            log_test("finished", "passed", test_name, "Test passed")
+            duration = time.time() - start_time
+            log_test("finished", "passed", test_name, f"Test passed in {duration:.3f}s")
+        except unittest.SkipTest as e:
+            duration = time.time() - start_time
+            COLOR_SKIPPED = "\033[94m"
+            elapsed = time.time() - DEPLOY_TIME
+            print(f"{COLOR_YELLOW}[{elapsed:.2f}s]{COLOR_RESET} "
+                  f"{COLOR_SKIPPED}[skipped]{COLOR_RESET} "
+                  f"{COLOR_SKIPPED}[skipped]{COLOR_RESET} "
+                  f"{COLOR_CYAN}[{test_name}]{COLOR_RESET} Test skipped: {e} (in {duration:.3f}s)")
+            raise
         except Exception as e:
-            log_test(" stopped", "failed", test_name, f"Test failed: {e}")
+            duration = time.time() - start_time
+            log_test("stopped", "failed", test_name, f"Test failed in {duration:.3f}s: {e}")
             raise
     return wrapper
 
@@ -122,6 +134,7 @@ class TestApp(unittest.TestCase):
 
         # Clean up
         os.remove(invalid_settings_path)
+
 
 if __name__ == "__main__":
     unittest.main()

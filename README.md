@@ -27,6 +27,8 @@ TaskMover is a Python-based file organization tool that allows users to define r
 ### External Python Libraries (Require Installation)
 
 
+### Installing Dependencies on Windows
+
 
 1. **ttkbootstrap**  
    Install with:
@@ -59,7 +61,6 @@ pip install -r requirements.txt
 ### Installing Dependencies on Linux
 For Linux users, follow the steps below based on your distribution:
 
-## ⚠ **Warning:** Linux support is currently limited due to windows specific calls ⚠
 
 #### Ubuntu/Debian
 ```bash
@@ -147,6 +148,7 @@ For detailed documentation, refer to:
 - [Requirements](./requirements.txt): List of dependencies.
 
 ## Known Bugs
+
 
 see project 
 
