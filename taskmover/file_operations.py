@@ -30,10 +30,6 @@ def organize_files(settings, rules, logger, organisation_folder=None):
         logger.error(f"Directory '{organisation_folder}' does not exist.")
         return
 
-    # Initialize root for Toplevel
-    root = Toplevel()
-    root.withdraw()  # Hide the root window
-
     # Get the list of files and total files
     files = [item for item in os.listdir(organisation_folder) if os.path.isfile(os.path.join(organisation_folder, item))]
     total_files = len(files)
@@ -55,43 +51,14 @@ def organize_files(settings, rules, logger):
     files = [item for item in os.listdir(organisation_folder) if os.path.isfile(os.path.join(organisation_folder, item))]
     total_files = len(files)
 
-    # Create a progress bar window
-    root = Toplevel()  
-    root.withdraw()  
-
-    progress_window = Toplevel(root)
-    progress_window.title("Organizing Files")
-    progress_window.geometry("400x200")
-    ttk.Label(progress_window, text="Organizing files, please wait...").pack(pady=10)
-    
-    # Progress bar
-    progress_bar = ttk.Progressbar(progress_window, orient="horizontal", length=300, mode="determinate")
-    progress_bar.pack(pady=10)
-    progress_bar["maximum"] = total_files
-
-    # Label to display the current file being processed
-    current_file_label = ttk.Label(progress_window, text="Current file: None")
-    current_file_label.pack(pady=10)
-
     for index, file_name in enumerate(files, start=1):
         file_path = os.path.join(organisation_folder, file_name)
         logger.info(f"Processing file {index}/{total_files}: {file_name}")
-        
-        # Update the current file label
-        current_file_label.config(text=f"Current file: {file_name}")
-        progress_window.update_idletasks()
 
         # Process the file
         move_file(file_path, organisation_folder, rules, logger)
 
-        # Update progress bar
-        progress_bar["value"] = index
-        progress_window.update_idletasks()
-
-    logger.info("File organization completed.")
-    progress_window.destroy()
-
-def move_file(file_path, organization_folder, rules, logger):
+def move_file(file_path, organization_folder, rules, logger, file_moved_callback=None):
     """
     Move a file to its target directory based on matching rules.
 
@@ -100,6 +67,9 @@ def move_file(file_path, organization_folder, rules, logger):
         organization_folder (str): Path to the organization folder.
         rules (dict): Dictionary of rules for organizing files.
         logger (logging.Logger): Logger for logging updates.
+        file_moved_callback (callable, optional): Called with (file_name, target_folder) when a file is moved.
+    Returns:
+        str: The target folder if moved, else None.
     """
     file_name = os.path.basename(file_path)
     for folder, rule in rules.items():
@@ -110,8 +80,11 @@ def move_file(file_path, organization_folder, rules, logger):
                 raise FileNotFoundError(f"Target folder '{target_folder}' does not exist for rule '{folder}'.")
             shutil.move(file_path, os.path.join(target_folder, file_name))
             logger.info(f"Moved file '{file_name}' to '{target_folder}'")
-            return
+            if file_moved_callback:
+                file_moved_callback(file_name, target_folder)
+            return target_folder
     logger.warning(f"No matching rule found for file '{file_name}'")
+    return None
 
 def unzip_file(zip_path, extract_to, logger):
     """
@@ -134,14 +107,16 @@ def unzip_file(zip_path, extract_to, logger):
         logger.error(f"Failed to unzip '{zip_path}': Bad zip file")
         messagebox.showerror("Error", f"Failed to unzip '{zip_path}': Bad zip file")
 
-def start_organization(settings, rules, logger):
+def start_organization(settings, rules, logger, progress_callback=None, file_moved_callback=None):
     """
-    Organize files in the organization folder with progress updates.
+    Organize files in the organization folder with progress updates via callbacks.
 
     Args:
         settings (dict): Application settings containing the organization folder.
         rules (dict): Dictionary of rules for organizing files.
         logger (logging.Logger): Logger for logging updates.
+        progress_callback (callable, optional): Called with (index, total, file_name) as each file is processed.
+        file_moved_callback (callable, optional): Called with (file_name, target_folder) when a file is moved.
     """
     organisation_folder = settings.get("organisation_folder","")
     if not organisation_folder or not os.path.exists(organisation_folder):
@@ -155,6 +130,8 @@ def start_organization(settings, rules, logger):
     for index, file_name in enumerate(files, start=1):
         file_path = os.path.join(organisation_folder, file_name)
         logger.info(f"Processing file {index}/{total_files}: {file_name}")
-        move_file(file_path, organisation_folder, rules, logger)
+        target_folder = move_file(file_path, organisation_folder, rules, logger, file_moved_callback)
+        if progress_callback:
+            progress_callback(index, total_files, file_name)
 
     logger.info("File organization completed.")

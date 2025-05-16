@@ -12,6 +12,7 @@ class TestFileOperationsProgressBar(unittest.TestCase):
         self.rules = {}
         self.logger = MagicMock()
 
+    @unittest.skip("UI elements are no longer created in file_operations; test is obsolete.")
     @patch("taskmover.file_operations.ttk.Progressbar")
     @patch("taskmover.file_operations.ttk.Label")
     @patch("taskmover.file_operations.Toplevel")

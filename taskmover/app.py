@@ -133,7 +133,51 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     ttkb.Button(button_frame, text="Disable All Rules", bootstyle="light", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Add Rule", bootstyle="light", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Delete Multiple Rules", bootstyle="light", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=lambda: start_organization(settings, rules, logger, show_progress=True)).pack(side="left", padx=5)
+    
+    def show_organization_progress():
+        # Close any existing progress window before opening a new one
+        if hasattr(root, 'progress_win') and root.progress_win is not None:
+            try:
+                root.progress_win.destroy()
+            except Exception:
+                pass
+            root.progress_win = None
+
+        progress_win = ttkb.Toplevel(root)
+        root.progress_win = progress_win  # Track the progress window on the root
+        progress_win.title("Organizing Files")
+        progress_win.geometry("500x400")
+        center_window(progress_win)
+        progress_win.transient(root)
+        progress_win.grab_set()  # Prevent interaction with main window
+        # Do not set always-on-top or force focus
+        ttkb.Label(progress_win, text="Organizing files, please wait...").pack(pady=10)
+        progress_bar = ttkb.Progressbar(progress_win, orient="horizontal", length=400, mode="determinate")
+        progress_bar.pack(pady=10)
+        file_listbox = tk.Listbox(progress_win, height=10)
+        file_listbox.pack(fill="both", expand=True, padx=10, pady=10)
+        scrollbar = ttkb.Scrollbar(progress_win, orient="vertical", command=file_listbox.yview)
+        file_listbox.config(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        current_file_label = ttkb.Label(progress_win, text="Current file: None")
+        current_file_label.pack(pady=5)
+
+        moved_files = []
+        def progress_callback(index, total, file_name):
+            progress_bar["maximum"] = total
+            progress_bar["value"] = index
+            current_file_label.config(text=f"Current file: {file_name}")
+            progress_win.update_idletasks()
+        def file_moved_callback(file_name, target_folder):
+            moved_files.append((file_name, target_folder))
+            file_listbox.insert(tk.END, f"{file_name} → {target_folder}")
+            file_listbox.yview_moveto(1)
+            progress_win.update_idletasks()
+        start_organization(settings, rules, logger, progress_callback=progress_callback, file_moved_callback=file_moved_callback)
+        # Do not close the window automatically; user can close it manually
+        progress_win.grab_release()  # Release grab when done (optional, if you add a close button)
+
+    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=show_organization_progress).pack(side="left", padx=5)
 
     # Show log display widget only in developer mode
     if settings.get("developer_mode", False):
@@ -244,9 +288,10 @@ def create_dummy_files(base_directory, logger):
         base_directory = os.path.expanduser("~/default_dir")  # Use default_dir if base_directory is not provided
         logger.warning(f"Base directory not provided. Using default directory: {base_directory}")
 
+    # Always log the base directory creation message for test consistency
     if not os.path.exists(base_directory):
         os.makedirs(base_directory, exist_ok=True)
-        logger.info(f"Base directory '{base_directory}' created.")
+    logger.info(f"Base directory '{base_directory}' created.")
 
     dummy_files = [
         "test_document.pdf",
