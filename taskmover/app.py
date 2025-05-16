@@ -133,7 +133,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     ttkb.Button(button_frame, text="Disable All Rules", bootstyle="light", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Add Rule", bootstyle="light", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Delete Multiple Rules", bootstyle="light", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=lambda: start_organization(settings, rules, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=lambda: start_organization(settings, rules, logger, show_progress=True)).pack(side="left", padx=5)
 
     # Show log display widget only in developer mode
     if settings.get("developer_mode", False):
@@ -456,3 +456,41 @@ def run():
         display_widget_names(widget_list)
 
     root.mainloop()
+
+def load_settings(settings_path):
+    """Load settings from the settings file with strict validation and error handling."""
+    import os
+    if not os.path.exists(settings_path):
+        return {
+            "base_directory": "",
+            "theme": "superhero",
+            "developer_mode": True,
+            "logging_level": "DEBUG",
+            "accent_color": "#FFFFFF",
+            "background_color": "#FFFFFF",
+            "text_color": "#000000",
+            "logging_components": {
+                "UI": 1,
+                "File Operations": 1,
+                "Rules": 1,
+                "Settings": 1
+            }
+        }
+    try:
+        with open(settings_path, "r") as file:
+            import yaml
+            settings = yaml.safe_load(file)
+            # Strict validation: must be a dict and contain required keys
+            required_keys = [
+                "base_directory", "theme", "developer_mode", "logging_level",
+                "accent_color", "background_color", "text_color", "logging_components"
+            ]
+            if not isinstance(settings, dict) or not all(k in settings for k in required_keys):
+                raise ValueError("Settings file is not a valid TaskMover settings dictionary.")
+            return settings
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Settings file not found: {settings_path}")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Error parsing YAML settings file: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to load settings: {e}")

@@ -72,80 +72,62 @@ class TestUI(unittest.TestCase):
 
     @log_decorator
     def test_buttons_integration(self):
-        try:
-            setup_ui(self.root, tk.StringVar(value="C:/"), self.rules, self.config_directory, self.style, self.settings, self.logger)
-            button_frame = None
-            for child in self.root.winfo_children():
-                if isinstance(child, ttkb.Frame):
-                    buttons = [w for w in child.winfo_children() if isinstance(w, ttkb.Button)]
-                    if len(buttons) >= 4:
-                        button_frame = child
-                        break
-            self.assertIsNotNone(button_frame, "Button frame not found")
-            buttons = [w for w in button_frame.winfo_children() if isinstance(w, ttkb.Button)]
-            self.assertGreaterEqual(len(buttons), 4, "Not all rule management buttons are present")
-        except tk.TclError:
-            self.skipTest("Tkinter display not available")
+        setup_ui(self.root, tk.StringVar(value="C:/"), self.rules, self.config_directory, self.style, self.settings, self.logger)
+        button_frame = None
+        for child in self.root.winfo_children():
+            if isinstance(child, ttkb.Frame):
+                buttons = [w for w in child.winfo_children() if isinstance(w, ttkb.Button)]
+                if len(buttons) >= 4:
+                    button_frame = child
+                    break
+        self.assertIsNotNone(button_frame, "Button frame not found")
+        buttons = [w for w in button_frame.winfo_children() if isinstance(w, ttkb.Button)]
+        self.assertGreaterEqual(len(buttons), 4, "Not all rule management buttons are present")
 
     @log_decorator
     def test_rule_list_update(self):
-        try:
-            rule_frame = tk.Frame(self.root)
-            update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
-            children = rule_frame.winfo_children()
-            self.assertEqual(len(children), len(self.rules), "Rule list does not match the number of rules.")
-        except tk.TclError:
-            self.skipTest("Tkinter display not available")
+        rule_frame = tk.Frame(self.root)
+        update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
+        children = rule_frame.winfo_children()
+        self.assertEqual(len(children), len(self.rules), "Rule list does not match the number of rules.")
 
     @log_decorator
     def test_rule_list_update_empty(self):
-        try:
-            rule_frame = tk.Frame(self.root)
-            update_rule_list(rule_frame, {}, self.config_directory, self.logger)
-            children = rule_frame.winfo_children()
-            self.assertEqual(len(children), 0, "Rule list should be empty when no rules are provided.")
-        except tk.TclError:
-            self.skipTest("Tkinter display not available")
+        rule_frame = tk.Frame(self.root)
+        update_rule_list(rule_frame, {}, self.config_directory, self.logger)
+        children = rule_frame.winfo_children()
+        self.assertEqual(len(children), 0, "Rule list should be empty when no rules are provided.")
 
     @log_decorator
     def test_rule_list_update_logger_called(self):
-        try:
-            rule_frame = tk.Frame(self.root)
-            update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
-            self.assertTrue(self.logger.info.called or self.logger.debug.called or self.logger.warning.called or self.logger.error.called)
-        except tk.TclError:
-            self.skipTest("Tkinter display not available")
+        rule_frame = tk.Frame(self.root)
+        update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
+        self.assertTrue(self.logger.info.called or self.logger.debug.called or self.logger.warning.called or self.logger.error.called)
 
     @log_decorator
     def test_all_ttkbootstrap_themes(self):
-        try:
-            available_themes = ttkb.Style().theme_names()
-            for theme in available_themes:
-                try:
-                    self.style.theme_use(theme)
-                    log_test("finished", "passed", f"test_theme_{theme}", f"Theme '{theme}' applied successfully.")
-                except Exception as e:
-                    log_test("stopped", "failed", f"test_theme_{theme}", f"Theme '{theme}' failed: {e}")
-                    self.fail(f"Theme '{theme}' failed: {e}")
-        except tk.TclError:
-            self.skipTest("Tkinter display not available")
+        available_themes = ttkb.Style().theme_names()
+        for theme in available_themes:
+            try:
+                self.style.theme_use(theme)
+                log_test("finished", "passed", f"test_theme_{theme}", f"Theme '{theme}' applied successfully.")
+            except Exception as e:
+                log_test("stopped", "failed", f"test_theme_{theme}", f"Theme '{theme}' failed: {e}")
+                self.fail(f"Theme '{theme}' failed: {e}")
 
     @log_decorator
     def test_color_application(self):
-        try:
-            test_colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF"]
-            label = tk.Label(self.root, text="Color Test")
-            label.pack()
-            for color in test_colors:
-                try:
-                    label.config(bg=color)
-                    self.root.update_idletasks()
-                    log_test("finished", "passed", f"test_color_{color}", f"Color '{color}' applied successfully.")
-                except Exception as e:
-                    log_test("stopped", "failed", f"test_color_{color}", f"Color '{color}' failed: {e}")
-                    self.fail(f"Color '{color}' failed: {e}")
-        except tk.TclError:
-            self.skipTest("Tkinter display not available")
+        test_colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF"]
+        label = tk.Label(self.root, text="Color Test")
+        label.pack()
+        for color in test_colors:
+            try:
+                label.config(bg=color)
+                self.root.update_idletasks()
+                log_test("finished", "passed", f"test_color_{color}", f"Color '{color}' applied successfully.")
+            except Exception as e:
+                log_test("stopped", "failed", f"test_color_{color}", f"Color '{color}' failed: {e}")
+                self.fail(f"Color '{color}' failed: {e}")
 
 if __name__ == "__main__":
     unittest.main()
