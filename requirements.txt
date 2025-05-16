@@ -3,3 +3,8 @@
 ttkbootstrap
 PyYAML
 Colorlog
+
+# Test requirements
+pytest
+pytest-mock
+mock

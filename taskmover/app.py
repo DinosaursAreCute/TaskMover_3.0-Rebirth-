@@ -20,11 +20,25 @@ from .rule_operations import add_rule
 from .utils import center_window
 from .utils import ensure_directory_exists
 from .config import load_or_initialize_rules
-from .ui_helpers import update_rule_list, enable_all_rules, disable_all_rules
-from .utils import reset_colors, show_license_info, browse_path
-from .debug_config import draw_debug_lines, display_widget_names, enable_debug_lines, enable_widget_highlighter
-from .ui_helpers import open_settings_window
-from .ui_helpers import add_menubar_with_settings, update_rule_list, enable_all_rules, disable_all_rules
+from .ui_menu_helpers import add_menubar
+from .ui_rule_helpers import (
+    update_rule_list, toggle_rule_active, toggle_unzip, enable_all_rules, disable_all_rules,
+    add_rule_button, delete_rule, delete_multiple_rules, edit_rule
+)
+from .ui_settings_helpers import (
+    open_settings_window, change_theme, choose_color, apply_custom_style
+)
+from .ui_developer_helpers import (
+    open_developer_settings, trigger_developer_function, execute_button
+)
+from .ui_color_helpers import (
+    choose_color_and_update, browse_path_and_update
+)
+from .ui_button_helpers import (
+    add_buttons_to_ui, activate_all_button, deactivate_all_button
+)
+from .ui_license_helpers import show_license_info
+from .debug_config import enable_debug_lines, enable_widget_highlighter, draw_debug_lines, display_widget_names
 
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
 
@@ -103,7 +117,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     apply_settings(root, settings, logger)
 
     # Add Menubar
-    add_menubar_with_settings(root, style, settings, save_settings, logger)
+    add_menubar(root, style, settings, save_settings, logger)
 
     # Rule List and Scrollbar
     rule_frame_container = ttkb.Frame(root, padding=0)
@@ -126,13 +140,13 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
 
     update_rule_list(rule_frame, rules, config_directory, logger)
 
-    # Buttons for rule operations
-    button_frame = ttkb.Frame(root, padding=10, bootstyle="secondary")
+    # Buttons for rule operations with custom color coding
+    button_frame = ttkb.Frame(root, padding=10)
     button_frame.pack(fill="x", padx=10, pady=5, before=rule_frame_container)
-    ttkb.Button(button_frame, text="Enable All Rules", bootstyle="light", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Disable All Rules", bootstyle="light", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Add Rule", bootstyle="light", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Delete Multiple Rules", bootstyle="light", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Enable All Rules", style="success.TButton", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Disable All Rules", style="danger.TButton", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Delete Multiple Rules", style="warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
     
     def show_organization_progress():
         # Close any existing progress window before opening a new one
@@ -182,7 +196,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
         # Do not close the window automatically; user can close it manually
         progress_win.grab_release()  # Release grab when done (optional, if you add a close button)
 
-    ttkb.Button(button_frame, text="Start Organization", bootstyle="success", command=show_organization_progress).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Start Organization", style="info.TButton", command=show_organization_progress).pack(side="left", padx=5)
 
     # Show log display widget only in developer mode
     if settings.get("developer_mode", False):
@@ -222,7 +236,7 @@ def open_developer_settings(root, settings, logger):
     dev_mode_dropdown.pack(fill="x", padx=10, pady=5)
     
     # Create Dummy Files Button
-    ttkb.Button(dev_window, text="Create Dummy Files", bootstyle="info", command=lambda: create_dummy_files(os.path.expanduser(settings.get("organisation_folder", "")), logger)).pack(pady=10)
+    ttkb.Button(dev_window, text="Create Dummy Files", command=lambda: create_dummy_files(os.path.expanduser(settings.get("organisation_folder", "")), logger)).pack(pady=10)
 
     def save_dev_settings():
         settings["developer_mode"] = dev_mode_var.get() == "Enabled"
@@ -284,8 +298,8 @@ def delete_multiple_rules(rules, config_directory, logger, rule_frame, root):
             update_rule_list(rule_frame, rules, config_directory, logger)
             delete_window.destroy()
 
-    ttkb.Button(delete_window, text="Delete Selected", command=confirm_delete).pack(pady=10)
-    ttkb.Button(delete_window, text="Cancel", command=delete_window.destroy).pack(pady=5)
+    ttkb.Button(delete_window, text="Delete Selected", style="danger.TButton", command=confirm_delete).pack(pady=10)
+    ttkb.Button(delete_window, text="Cancel", style="secondary.TButton", command=delete_window.destroy).pack(pady=5)
 
 def create_dummy_files(base_directory, logger):
     """Create dummy files of various types in the base directory for testing."""
@@ -326,26 +340,6 @@ def create_dummy_files(base_directory, logger):
             messagebox.showerror("Error", f"An error occurred while creating dummy files: {e}")
         except Exception:
             pass
-
-def add_menubar_with_settings(window, style, settings, save_settings, logger):
-    """Add a menubar with settings to the main window."""
-    menubar = Menu(window)
-    window.config(menu=menubar)
-
-    # File Menu
-    file_menu = Menu(menubar, tearoff=0)
-    file_menu.add_command(label='Exit', command=window.quit)
-    menubar.add_cascade(label='File', menu=file_menu)
-
-    # Settings Menu
-    settings_menu = Menu(menubar, tearoff=0)
-    settings_menu.add_command(label="Open Settings", command=lambda: open_settings_window(window, settings, save_settings, logger)) 
-    menubar.add_cascade(label='Settings', menu=settings_menu)
-
-    # Help Menu
-    help_menu = Menu(menubar, tearoff=0)
-    help_menu.add_command(label="License Information", command=show_license_info)
-    menubar.add_cascade(label="Help", menu=help_menu)
 
 def reset_colors(settings, save_settings, logger):
     """Reset all color settings to their default values."""
@@ -403,7 +397,7 @@ def edit_rule(rule_key, rules, config_directory, logger, rule_frame, root):
             dir_var.set(selected_path)
             logger.info(f"Updated directory for rule '{rule_key}' to: {selected_path}")
 
-    browse_button = ttkb.Button(dir_frame, text="Browse", bootstyle="success", command=browse_directory)
+    browse_button = ttkb.Button(dir_frame, text="Browse", command=browse_directory)
     browse_button.pack(side="left", padx=5)
 
     # Patterns
@@ -420,8 +414,8 @@ def edit_rule(rule_key, rules, config_directory, logger, rule_frame, root):
         update_rule_list(rule_frame, rules, config_directory, logger)
         edit_window.destroy()
 
-    ttkb.Button(edit_window, text="Save", command=save_changes).pack(pady=10)
-    ttkb.Button(edit_window, text="Cancel", command=edit_window.destroy).pack(pady=5)
+    ttkb.Button(edit_window, text="Save", style="success.TButton", command=save_changes).pack(pady=10)
+    ttkb.Button(edit_window, text="Cancel", style="danger.TButton", command=edit_window.destroy).pack(pady=5)
 
 def show_license_info():
     """Display the license information in a message box."""

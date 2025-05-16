@@ -5,23 +5,36 @@ import tkinter
 from tkinter import messagebox
 from pathlib import Path
 
-def center_window(window):
-    """Zentriert ein Fenster auf dem Bildschirm."""
-    window.update_idletasks()
-    width = window.winfo_width()
-    height = window.winfo_height()
-    x = (window.winfo_screenwidth() // 2) - (width // 2)
-    y = (window.winfo_screenheight() // 2) - (height // 2)
-    window.geometry(f"{width}x{height}+{x}+{y}")
+# Modularized UI helpers are now imported from their respective files.
+from .ui_menu_helpers import add_menubar
+from .ui_rule_helpers import (
+    update_rule_list, toggle_rule_active, toggle_unzip, enable_all_rules, disable_all_rules,
+    add_rule_button, delete_rule, delete_multiple_rules, edit_rule
+)
+from .ui_settings_helpers import (
+    open_settings_window, change_theme, choose_color, apply_custom_style
+)
+from .ui_developer_helpers import (
+    open_developer_settings, trigger_developer_function, execute_button
+)
+from .ui_color_helpers import (
+    choose_color_and_update, browse_path_and_update
+)
+from .ui_button_helpers import (
+    add_buttons_to_ui, activate_all_button, deactivate_all_button
+)
+from .ui_license_helpers import show_license_info
+from .center_window import center_window
 
-def ensure_directory_exists(directory: str | Path, logger: logging.Logger = None) -> None:
+# Utility functions (non-UI)
+def ensure_directory_exists(directory: str | Path, logger: 'logging.Logger | None' = None) -> None:
     """Ensure a directory exists, creating it if necessary."""
     try:
         Path(directory).mkdir(parents=True, exist_ok=True)
-        if logger:
+        if logger is not None:
             logger.debug(f"Ensured directory exists: {directory}")
     except Exception as e:
-        if logger:
+        if logger is not None:
             logger.error(f"Failed to create directory '{directory}': {e}")
         raise
 
@@ -37,9 +50,13 @@ def reset_colors(settings: dict, save_settings, logger: logging.Logger) -> None:
     """
     default_colors = {"accent_color": None, "background_color": None, "text_color": None}
     settings.update(default_colors)
-    save_settings(settings_path, settings, logger)
-    logger.info("Colors reset to default values.")
-    messagebox.showinfo("Reset Colors", "All colors have been reset to their default values.")
+    try:
+        save_settings(settings_path, settings, logger)
+        logger.info("Colors reset to default values.")
+        messagebox.showinfo("Reset Colors", "All colors have been reset to their default values.")
+    except Exception as e:
+        logger.error(f"Failed to reset colors: {e}")
+        messagebox.showerror("Error", f"Failed to reset colors: {e}")
 
 def show_license_info() -> None:
     """
@@ -68,7 +85,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-    messagebox.showinfo("License Information", license_text)
+    try:
+        messagebox.showinfo("License Information", license_text)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to display license info: {e}")
 
 def browse_path(path_var: tkinter.StringVar, logger: logging.Logger) -> None:
     """
@@ -77,7 +97,11 @@ def browse_path(path_var: tkinter.StringVar, logger: logging.Logger) -> None:
         path_var (tk.StringVar): Variable to store the selected directory.
         logger (logging.Logger): Logger for logging updates.
     """
-    selected_path = tkinter.filedialog.askdirectory()
-    if selected_path:
-        path_var.set(selected_path)
-        logger.info(f"Base path updated to: {selected_path}")
+    try:
+        selected_path = tkinter.filedialog.askdirectory()
+        if selected_path:
+            path_var.set(selected_path)
+            logger.info(f"Base path updated to: {selected_path}")
+    except Exception as e:
+        logger.error(f"Failed to browse path: {e}")
+        messagebox.showerror("Error", f"Failed to select directory: {e}")
