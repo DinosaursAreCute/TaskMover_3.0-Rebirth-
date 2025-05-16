@@ -1,7 +1,9 @@
 import os
 import logging
 import tkinter.filedialog
+import tkinter
 from tkinter import messagebox
+from pathlib import Path
 
 def center_window(window):
     """Zentriert ein Fenster auf dem Bildschirm."""
@@ -12,10 +14,10 @@ def center_window(window):
     y = (window.winfo_screenheight() // 2) - (height // 2)
     window.geometry(f"{width}x{height}+{x}+{y}")
 
-def ensure_directory_exists(directory, logger=None):
+def ensure_directory_exists(directory: str | Path, logger: logging.Logger = None) -> None:
     """Ensure a directory exists, creating it if necessary."""
     try:
-        os.makedirs(directory, exist_ok=True)
+        Path(directory).mkdir(parents=True, exist_ok=True)
         if logger:
             logger.debug(f"Ensured directory exists: {directory}")
     except Exception as e:
@@ -25,7 +27,7 @@ def ensure_directory_exists(directory, logger=None):
 
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
 
-def reset_colors(settings, save_settings, logger):
+def reset_colors(settings: dict, save_settings, logger: logging.Logger) -> None:
     """
     Reset all color settings to their default values.
     Args:
@@ -39,7 +41,7 @@ def reset_colors(settings, save_settings, logger):
     logger.info("Colors reset to default values.")
     messagebox.showinfo("Reset Colors", "All colors have been reset to their default values.")
 
-def show_license_info():
+def show_license_info() -> None:
     """
     Display the license information in a message box.
     """
@@ -68,7 +70,7 @@ SOFTWARE.
 """
     messagebox.showinfo("License Information", license_text)
 
-def browse_path(path_var, logger):
+def browse_path(path_var: tkinter.StringVar, logger: logging.Logger) -> None:
     """
     Open a directory selection dialog and update the given path variable.
     Args:

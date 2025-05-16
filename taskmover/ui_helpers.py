@@ -12,6 +12,7 @@ import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import os
 import winsound  # Import winsound for playing error sounds
+from pathlib import Path
 
 from .utils import reset_colors, show_license_info, browse_path
 
@@ -345,7 +346,7 @@ def choose_color_and_update(setting, color_var):
     if color_code:
         color_var.set(color_code)
 
-def trigger_developer_function(base_directory, logger):
+def trigger_developer_function(base_directory: str, logger: logging.Logger) -> None:
     logger.info("Developer function triggered.")
 
     if not base_directory:
@@ -353,8 +354,9 @@ def trigger_developer_function(base_directory, logger):
         messagebox.showwarning("Warning", "Base directory is not set. Developer function aborted.")
         return
 
-    # Create dummy files inside the base directory
     try:
+        base_path = Path(base_directory)
+        base_path.mkdir(parents=True, exist_ok=True)
         dummy_files = [
             "test_document.pdf",
             "image_sample.jpg",
@@ -362,13 +364,11 @@ def trigger_developer_function(base_directory, logger):
             "archive_file.zip",
             "random_file.txt"
         ]
-
+        # Batch file creation
         for file_name in dummy_files:
-            file_path = os.path.join(base_directory, file_name)
-            with open(file_path, "w") as dummy_file:
-                dummy_file.write(f"Dummy content for {file_name}")
+            file_path = base_path / file_name
+            file_path.write_text(f"Dummy content for {file_name}")
             logger.info(f"Created dummy file: {file_path}")
-
         messagebox.showinfo("Developer Function", f"Dummy files created in {base_directory}.")
     except Exception as e:
         logger.error(f"Error creating dummy files: {e}")
@@ -426,6 +426,21 @@ def open_developer_settings(window, settings, save_settings, logger):
 def change_theme(style, settings, save_settings, theme_name, logger):
     style.theme_use(theme_name)
     settings["theme"] = theme_name
+    # Extract theme colors and save as custom colors
+    try:
+        # Attempt to get theme colors from style lookup
+        bg = style.lookup("TFrame", "background") or style.lookup("TLabel", "background")
+        fg = style.lookup("TLabel", "foreground")
+        accent = style.lookup("TButton", "foreground")
+        if bg:
+            settings["background_color"] = bg
+        if fg:
+            settings["text_color"] = fg
+        if accent:
+            settings["accent_color"] = accent
+        logger.info(f"Theme colors saved as custom colors: bg={bg}, fg={fg}, accent={accent}")
+    except Exception as e:
+        logger.warning(f"Could not extract theme colors: {e}")
     save_settings(settings_path, settings,logger)
     logger.info(f"Theme changed to {theme_name}.")
 

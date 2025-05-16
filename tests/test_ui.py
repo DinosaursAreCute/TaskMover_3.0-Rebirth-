@@ -1,59 +1,10 @@
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import unittest
 from unittest.mock import MagicMock
 import time
 
-DEPLOY_TIME = time.time()
-
-COLOR_RESET = "\033[0m"
-COLOR_GREEN = "\033[92m"
-COLOR_RED = "\033[91m"
-COLOR_YELLOW = "\033[93m"
-COLOR_CYAN = "\033[96m"
-
-def log_test(state, result, test, message):
-    elapsed = time.time() - DEPLOY_TIME
-    color = COLOR_GREEN if result == "passed" else COLOR_RED
-    state_color = COLOR_CYAN if state == "finished" else COLOR_YELLOW
-    print(f"{COLOR_YELLOW}[{elapsed:.2f}s]{COLOR_RESET} "
-          f"{state_color}[{state}]{COLOR_RESET} "
-          f"{color}[{result}]{COLOR_RESET} "
-          f"{COLOR_CYAN}[{test}]{COLOR_RESET} {message}")
-
-def log_decorator(fn):
-    def wrapper(self, *args, **kwargs):
-        test_name = fn.__name__
-        start_time = time.time()
-        try:
-            fn(self, *args, **kwargs)
-            duration = time.time() - start_time
-            log_test("finished", "passed", test_name, f"Test passed in {duration:.3f}s")
-        except unittest.SkipTest as e:
-            duration = time.time() - start_time
-            COLOR_SKIPPED = "\033[94m"
-            elapsed = time.time() - DEPLOY_TIME
-            print(f"{COLOR_YELLOW}[{elapsed:.2f}s]{COLOR_RESET} "
-                  f"{COLOR_SKIPPED}[skipped]{COLOR_RESET} "
-                  f"{COLOR_SKIPPED}[skipped]{COLOR_RESET} "
-                  f"{COLOR_CYAN}[{test_name}]{COLOR_RESET} Test skipped: {e} (in {duration:.3f}s)")
-            raise
-        except Exception as e:
-            duration = time.time() - start_time
-            log_test("stopped", "failed", test_name, f"Test failed in {duration:.3f}s: {e}")
-            raise
-    return wrapper
-
-def can_init_tk():
-    try:
-        import tkinter as tk
-        root = tk.Tk()
-        root.destroy()
-        return True
-    except Exception:
-        return False
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 class TestUI(unittest.TestCase):
     def setUp(self):
@@ -65,9 +16,17 @@ class TestUI(unittest.TestCase):
         self.logger = MagicMock()
         self.settings = {"theme": "flatly"}
 
-    @log_decorator
+    def can_init_tk(self):
+        try:
+            import tkinter as tk
+            root = tk.Tk()
+            root.destroy()
+            return True
+        except Exception:
+            return False
+
     def test_buttons_integration(self):
-        if not can_init_tk():
+        if not self.can_init_tk():
             self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
         import tkinter as tk
         import ttkbootstrap as ttkb
@@ -89,9 +48,8 @@ class TestUI(unittest.TestCase):
         finally:
             root.destroy()
 
-    @log_decorator
     def test_rule_list_update(self):
-        if not can_init_tk():
+        if not self.can_init_tk():
             self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
         import tkinter as tk
         from taskmover.ui_helpers import update_rule_list
@@ -104,9 +62,8 @@ class TestUI(unittest.TestCase):
         finally:
             root.destroy()
 
-    @log_decorator
     def test_rule_list_update_empty(self):
-        if not can_init_tk():
+        if not self.can_init_tk():
             self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
         import tkinter as tk
         from taskmover.ui_helpers import update_rule_list
@@ -119,9 +76,8 @@ class TestUI(unittest.TestCase):
         finally:
             root.destroy()
 
-    @log_decorator
     def test_rule_list_update_logger_called(self):
-        if not can_init_tk():
+        if not self.can_init_tk():
             self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
         import tkinter as tk
         from taskmover.ui_helpers import update_rule_list
@@ -129,15 +85,12 @@ class TestUI(unittest.TestCase):
         try:
             rule_frame = tk.Frame(root)
             update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
-            # Log the result of the test explicitly
-            log_test("finished", "passed", "test_rule_list_update_logger_called", "update_rule_list executed without error.")
             self.assertTrue(True, "update_rule_list executed without error.")
         finally:
             root.destroy()
 
-    @log_decorator
     def test_all_ttkbootstrap_themes(self):
-        if not can_init_tk():
+        if not self.can_init_tk():
             self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
         import ttkbootstrap as ttkb
         style = ttkb.Style()
@@ -145,14 +98,11 @@ class TestUI(unittest.TestCase):
         for theme in available_themes:
             try:
                 style.theme_use(theme)
-                log_test("finished", "passed", f"test_theme_{theme}", f"Theme '{theme}' applied successfully.")
             except Exception as e:
-                log_test("stopped", "failed", f"test_theme_{theme}", f"Theme '{theme}' failed: {e}")
                 self.fail(f"Theme '{theme}' failed: {e}")
 
-    @log_decorator
     def test_color_application(self):
-        if not can_init_tk():
+        if not self.can_init_tk():
             self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
         import tkinter as tk
         root = tk.Tk()
@@ -164,9 +114,7 @@ class TestUI(unittest.TestCase):
                 try:
                     label.config(bg=color)
                     root.update_idletasks()
-                    log_test("finished", "passed", f"test_color_{color}", f"Color '{color}' applied successfully.")
                 except Exception as e:
-                    log_test("stopped", "failed", f"test_color_{color}", f"Color '{color}' failed: {e}")
                     self.fail(f"Color '{color}' failed: {e}")
         finally:
             root.destroy()
