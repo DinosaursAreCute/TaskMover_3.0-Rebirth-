@@ -151,8 +151,10 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
         progress_win.transient(root)
         progress_win.grab_set()  # Prevent interaction with main window
         # Do not set always-on-top or force focus
+
         progress_label = ttkb.Label(progress_win, text="Organizing files, please wait...")
         progress_label.pack(pady=10)
+
         progress_bar = ttkb.Progressbar(progress_win, orient="horizontal", length=400, mode="determinate")
         progress_bar.pack(pady=10)
         file_listbox = tk.Listbox(progress_win, height=10)
