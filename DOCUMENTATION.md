@@ -25,6 +25,15 @@
 ### How to handle settings files
 - The application expects a valid YAML settings file with all required keys. If the file is missing or invalid, a `RuntimeError` will be raised and should be handled appropriately.
 
+## [2.1.0] - 2025-05-17
+
+- All automated tests (UI and non-UI) now pass reliably on all supported platforms.
+- UI tests are automatically skipped in headless environments (e.g., CI servers, remote shells).
+- Theme Manager UI is fully stable, with all components covered by automated tests.
+- Fixed duplicate/hidden Add Theme button logic and improved theme manager code structure.
+- YAML config and theme file handling is now robust, with auto-fix and user prompt logic for broken/missing files.
+- Documentation and developer comments updated for clarity and maintainability.
+
 ## Overview
 
 TaskMover is a file organization tool designed to help users manage and organize their files efficiently. It provides a user-friendly interface and customizable rules for file organization.

@@ -2,6 +2,32 @@
 
 TaskMover is a Python-based file organization tool that allows users to define rules for organizing files in a directory. It supports features like pattern matching, file moving, unzipping, and a graphical user interface for managing rules.
 
+## What's New in 2.1.0 (2025-05-17)
+
+- Modularized UI logic into helper modules (e.g., ui_menu_helpers.py, ui_rule_helpers.py, etc.) for maintainability and clarity.
+- Added a Theme Manager tab for full CRUD (create, read, update, delete) on custom themes.
+- Removed the Colors tab; all theme management is now in the Theme Manager tab.
+- Only custom themes are editable; built-in themes cannot be overwritten or modified.
+- Custom themes are now included in the main theme selector in the General tab.
+- Fixed all major theme application errors (e.g., no more attempts to style unsupported widgets like Menubar, Listbox, or Text via ttkbootstrap).
+- Suppressed info popups for theme save/apply actions for a smoother workflow.
+- Cleaned up all __pycache__ folders and checked for other unnecessary files.
+- Added type hints and docstrings to all major functions in ui_settings_helpers.py and other helpers.
+- Updated and clarified documentation for theme management and UI structure.
+- Prevented crashes related to unsupported style keys (e.g., Menubar, Listbox, Text).
+- Fixed all crashes related to theme application and widget styling.
+- Fixed logic to prevent built-in theme modification.
+- Fixed all references to removed Colors tab and legacy color logic.
+- Broke circular imports and standardized function signatures across UI modules.
+- Used PowerShell Remove-Item to clean up bytecode and __pycache__ folders.
+- Improved code documentation and maintainability.
+- All automated tests now pass reliably, including UI and non-UI tests.
+- UI tests are automatically skipped in headless environments (e.g., CI servers).
+- Theme Manager UI is fully stable and covered by automated tests.
+- Fixed duplicate/hidden Add Theme button logic and improved theme manager code structure.
+- Improved YAML config and theme file handling, with robust auto-fix and user prompt logic.
+- Documentation and developer comments updated for clarity and maintainability.
+
 ## Features
 
 - Define rules for organizing files based on patterns.
@@ -10,6 +36,8 @@ TaskMover is a Python-based file organization tool that allows users to define r
 - Enable or disable rules dynamically.
 - Graphical user interface (GUI) for managing rules and configurations.
 - Customizable themes and colors.
+- Developer tools for testing and debugging.
+- Colorful, detailed test automation and logging.
 
 ## Requirements
 

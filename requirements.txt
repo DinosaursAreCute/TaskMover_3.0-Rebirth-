@@ -1,5 +1,6 @@
 # Required Python packages
-# Add any additional dependencies here
+# All dependencies below are required for both runtime and test automation
+# UI tests are automatically skipped in headless environments (no display)
 ttkbootstrap
 PyYAML
 Colorlog

@@ -194,28 +194,34 @@ def open_settings_window(
         style = ttkb.Style()
         # List of built-in style keys to avoid reconfiguring
         builtin_styles = {"TScrollbar", "TProgressbar", "TScale", "TSpinbox"}
+        background_supported = {"TFrame", "Labelframe", "Panedwindow", "TMenubutton", "TNotebook", "TSeparator", "TPanedwindow", "TTreeview"}
         for style_key, color in theme.items():
             # Only apply to custom style names or safe built-in ones
             if style_key in builtin_styles:
                 continue
             if "Menubar" in style_key or "Menu" in style_key:
                 continue  # Do not try to style Menubar/Menu via ttk style
-            if ".TButton" in style_key or "Button" in style_key:
-                style.configure(style_key, foreground=color)
-            elif "Frame" in style_key or "Labelframe" in style_key or "Panedwindow" in style_key:
-                style.configure(style_key, background=color)
-            elif "Label" in style_key:
-                style.configure(style_key, foreground=color)
-            elif ("Entry" in style_key):
-                style.configure(style_key, fieldbackground=color)
-            # Do NOT try to style TListbox or TText with fieldbackground (not supported by ttkbootstrap)
-            elif ("Text" in style_key or "Listbox" in style_key):
+            try:
+                if ".TButton" in style_key or "Button" in style_key:
+                    style.configure(style_key, foreground=color)
+                elif any(x in style_key for x in background_supported):
+                    style.configure(style_key, background=color)
+                elif "Label" in style_key:
+                    style.configure(style_key, foreground=color)
+                elif ("Entry" in style_key):
+                    style.configure(style_key, fieldbackground=color)
+                # Do NOT try to style TListbox or TText with fieldbackground (not supported by ttkbootstrap)
+                elif ("Text" in style_key or "Listbox" in style_key):
+                    continue
+                elif ("Scrollbar" in style_key or "Progressbar" in style_key or "Scale" in style_key or "Spinbox" in style_key):
+                    if style_key not in builtin_styles:
+                        style.configure(style_key, troughcolor=color)
+                else:
+                    # Only try background for known supported keys
+                    pass
+            except Exception:
+                # Silently skip unsupported style keys
                 continue
-            elif ("Scrollbar" in style_key or "Progressbar" in style_key or "Scale" in style_key or "Spinbox" in style_key):
-                if style_key not in builtin_styles:
-                    style.configure(style_key, troughcolor=color)
-            else:
-                style.configure(style_key, background=color)
         if hasattr(root, 'config'):
             root.config(bg=theme.get("TFrame", "#FFFFFF"))
         for child in root.winfo_children():
@@ -225,6 +231,34 @@ def open_settings_window(
     # --- Buttons for theme actions ---
     ttkb.Button(theme_frame, text="Save Color for Widget", style="success.TButton", command=save_widget_color).pack(pady=5)
     ttkb.Button(theme_frame, text="Apply Selected Theme", style="primary.TButton", command=apply_selected_theme).pack(pady=5)
+    
+    # --- Add Theme Button ---
+    def refresh_theme_listbox():
+        theme_names = list(settings.get("custom_themes", {}).keys())
+        theme_select_dropdown["values"] = theme_names
+        if theme_names:
+            theme_select_var.set(theme_names[0])
+        else:
+            theme_select_var.set("")
+
+    def add_custom_theme():
+        name = simpledialog.askstring("Add Custom Theme", "Enter a name for the new theme:")
+        if name:
+            themes = load_all_themes()
+            if name in themes:
+                messagebox.showerror("Theme Exists", f"A custom theme named '{name}' already exists.")
+                return
+            blank_theme = {
+                "accent_color": "#007bff",
+                "background_color": "#FFFFFF",
+                "text_color": "#000000",
+                "warning_color": "#ffc107"
+            }
+            save_theme(name, blank_theme, logger)
+            refresh_theme_listbox()
+            theme_select_var.set(name)
+    ttkb.Button(theme_frame, text="Add Theme", style="success.TButton", command=add_custom_theme).pack(anchor="w", padx=10, pady=5)
+
     def save_changes():
         settings["organisation_folder"] = organisation_folder_var.get()
         settings["theme"] = theme_var.get()
@@ -271,9 +305,32 @@ def open_theme_manager_window(
     ttkb.Label(theme_win, text="Custom Themes", font=("Helvetica", 14, "bold")).pack(pady=10)
     theme_listbox = tk.Listbox(theme_win)
     theme_listbox.pack(fill="x", padx=10)
-    themes = load_all_themes()
-    for name in themes:
-        theme_listbox.insert(tk.END, name)
+    def refresh_theme_listbox():
+        theme_listbox.delete(0, tk.END)
+        themes = load_all_themes()
+        if isinstance(themes, dict):
+            for name in themes.keys():
+                theme_listbox.insert(tk.END, name)
+    refresh_theme_listbox()
+    # Add Theme button for standalone theme manager
+    def add_custom_theme():
+        name = simpledialog.askstring("Add Custom Theme", "Enter a name for the new theme:")
+        if name:
+            themes = load_all_themes()
+            if name in themes:
+                messagebox.showerror("Theme Exists", f"A custom theme named '{name}' already exists.")
+                return
+            blank_theme = {
+                "accent_color": "#007bff",
+                "background_color": "#FFFFFF",
+                "text_color": "#000000",
+                "warning_color": "#ffc107"
+            }
+            save_theme(name, blank_theme, logger)
+            refresh_theme_listbox()
+            theme_listbox.selection_clear(0, tk.END)
+            theme_listbox.selection_set(tk.END)
+    ttkb.Button(theme_win, text="Add Theme", style="success.TButton", command=add_custom_theme).pack(pady=5)
 
     # Theme config fields
     ttkb.Label(theme_win, text="Accent Color:").pack(anchor="w", padx=10, pady=2)
@@ -321,7 +378,7 @@ def open_theme_manager_window(
                 "warning_color": warning_var.get()
             }
             save_theme(name, data, logger)
-            theme_listbox.insert(tk.END, name)
+            refresh_theme_listbox()
 
     def apply_current_theme():
         data = {

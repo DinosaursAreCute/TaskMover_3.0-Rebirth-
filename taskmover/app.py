@@ -23,13 +23,14 @@ from .config import load_or_initialize_rules
 from .ui_menu_helpers import add_menubar
 from .ui_rule_helpers import (
     update_rule_list, toggle_rule_active, toggle_unzip, enable_all_rules, disable_all_rules,
-    add_rule_button, delete_rule, delete_multiple_rules, edit_rule
+    delete_rule, delete_multiple_rules, edit_rule
 )
 from .ui_settings_helpers import (
-    open_settings_window, change_theme, choose_color, apply_custom_style
+    open_settings_window, change_theme, apply_custom_style
 )
 from .ui_developer_helpers import (
-    open_developer_settings, trigger_developer_function, execute_button
+    open_developer_settings as open_developer_settings,
+    trigger_developer_function
 )
 from .ui_color_helpers import (
     choose_color_and_update, browse_path_and_update
@@ -124,7 +125,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     rule_frame_container.pack(fill="both", expand=True, padx=10, pady=10)
     canvas = tk.Canvas(rule_frame_container, borderwidth=0, highlightthickness=0)
     scrollbar = ttkb.Scrollbar(rule_frame_container, orient="vertical", command=canvas.yview)
-    rule_frame = ttkb.Frame(canvas, padding=10, bootstyle="secondary")
+    rule_frame = ttkb.Frame(canvas, padding=10)
     canvas.create_window((0, 0), window=rule_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.pack(side="left", fill="both", expand=True)
@@ -146,8 +147,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     ttkb.Button(button_frame, text="Enable All Rules", style="success.TButton", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Disable All Rules", style="danger.TButton", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
-    # When creating warning buttons, use style="Warning.TButton" instead of "warning.TButton"
-    ttkb.Button(button_frame, text="Delete Multiple Rules", style="Warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, root)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Delete Multiple Rules", style="Warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame)).pack(side="left", padx=5)
     
     def show_organization_progress():
         # Close any existing progress window before opening a new one
@@ -221,7 +221,7 @@ def browse_path(path_var, logger):
         path_var.set(selected_path)
         logger.info(f"Base path updated to: {selected_path}")
 
-def open_developer_settings(root, settings, logger):
+def open_developer_settings(root, settings, save_settings, logger):
     """Open the developer settings window."""
     dev_window = tk.Toplevel(root)
     dev_window.title("Developer Settings")
@@ -246,61 +246,6 @@ def open_developer_settings(root, settings, logger):
         dev_window.destroy()
 
     ttkb.Button(dev_window, text="Save", command=save_dev_settings).pack(pady=10)
-
-def add_rule(rules, config_directory, rule_frame, logger, root):
-    """Add a new rule to the rules dictionary."""
-    rule_name = simpledialog.askstring("Add Rule", "Enter the name of the new rule:")
-    if rule_name:
-        if rule_name in rules:
-            messagebox.showerror("Error", f"Rule '{rule_name}' already exists.")
-            logger.warning(f"Attempted to add duplicate rule: {rule_name}")
-        else:
-            rules[rule_name] = {"patterns": [], "path": "", "unzip": False, "active": True}
-            save_rules(config_directory, rules)
-            update_rule_list(rule_frame, rules, config_directory, logger)
-            logger.info(f"Added new rule: {rule_name}")
-
-def remove_rule(rules, config_directory, rule_frame, logger):
-    """Remove an existing rule from the rules dictionary."""
-    rule_name = simpledialog.askstring("Remove Rule", "Enter the name of the rule to remove:")
-    if rule_name:
-        if rule_name in rules:
-            del rules[rule_name]
-            save_rules(config_directory, rules)
-            update_rule_list(rule_frame, rules, config_directory, logger)
-            logger.info(f"Removed rule: {rule_name}")
-        else:
-            messagebox.showerror("Error", f"Rule '{rule_name}' does not exist.")
-            logger.warning(f"Attempted to remove non-existent rule: {rule_name}")
-
-def delete_multiple_rules(rules, config_directory, logger, rule_frame, root):
-    """Delete multiple rules from the rules dictionary."""
-    delete_window = tk.Toplevel(root)
-    delete_window.title("Delete Rules")
-    delete_window.geometry("400x500")
-    center_window(delete_window)
-
-    ttkb.Label(delete_window, text="Select Rules to Delete", font=("Helvetica", 12, "bold")).pack(pady=10)
-
-    listbox = tk.Listbox(delete_window, selectmode=tk.MULTIPLE, width=50, height=15)
-    listbox.pack(pady=10, padx=10)
-
-    for rule_key in rules.keys():
-        listbox.insert(tk.END, rule_key)
-
-    def confirm_delete():
-        selected_indices = listbox.curselection()
-        selected_rules = [listbox.get(i) for i in selected_indices]
-        if selected_rules and messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the selected rules?"):
-            for rule_key in selected_rules:
-                del rules[rule_key]
-                logger.info(f"Rule '{rule_key}' deleted.")
-            save_rules(rules, logger)
-            update_rule_list(rule_frame, rules, config_directory, logger)
-            delete_window.destroy()
-
-    ttkb.Button(delete_window, text="Delete Selected", style="danger.TButton", command=confirm_delete).pack(pady=10)
-    ttkb.Button(delete_window, text="Cancel", style="secondary.TButton", command=delete_window.destroy).pack(pady=5)
 
 def create_dummy_files(base_directory, logger):
     """Create dummy files of various types in the base directory for testing."""
@@ -342,14 +287,6 @@ def create_dummy_files(base_directory, logger):
         except Exception:
             pass
 
-def reset_colors(settings, save_settings, logger):
-    """Reset all color settings to their default values."""
-    default_colors = {"accent_color": None, "background_color": None, "text_color": None}
-    settings.update(default_colors)
-    save_settings(settings_path, settings, logger)
-    logger.info("Colors reset to default values.")
-    messagebox.showinfo("Reset Colors", "All colors have been reset to their default values.")
-
 def choose_color(color_type, style, settings, save_settings, logger):
     """Allow the user to choose a color and update the settings."""
     color_code = colorchooser.askcolor(title=f"Choose {color_type} Color")[1]  # Use colorchooser.askcolor
@@ -373,50 +310,6 @@ def choose_color(color_type, style, settings, save_settings, logger):
 
 
         logger.info(f"{color_type} color applied to the UI.")
-
-def edit_rule(rule_key, rules, config_directory, logger, rule_frame, root):
-    """Edit an existing rule in the rules dictionary."""
-    edit_window = tk.Toplevel(root)
-    edit_window.title(f"Edit Rule: {rule_key}")
-    edit_window.geometry("400x300")
-    center_window(edit_window)
-
-    ttkb.Label(edit_window, text=f"Edit Rule: {rule_key}", font=("Helvetica", 12, "bold")).pack(pady=10)
-
-    # Directory
-    ttkb.Label(edit_window, text="Directory:").pack(anchor="w", padx=10)
-    dir_var = tk.StringVar(value=rules[rule_key]['path'])
-    dir_frame = ttkb.Frame(edit_window)
-    dir_frame.pack(fill="x", padx=10, pady=5)
-
-    dir_entry = ttkb.Entry(dir_frame, textvariable=dir_var, width=40)
-    dir_entry.pack(side="left", padx=5)
-
-    def browse_directory():
-        selected_path = filedialog.askdirectory(title="Select Directory")
-        if selected_path:
-            dir_var.set(selected_path)
-            logger.info(f"Updated directory for rule '{rule_key}' to: {selected_path}")
-
-    browse_button = ttkb.Button(dir_frame, text="Browse", command=browse_directory)
-    browse_button.pack(side="left", padx=5)
-
-    # Patterns
-    ttkb.Label(edit_window, text="Patterns (comma-separated):").pack(anchor="w", padx=10)
-    patterns_var = tk.StringVar(value=", ".join(rules[rule_key]['patterns']))
-    patterns_entry = ttkb.Entry(edit_window, textvariable=patterns_var, width=50)
-    patterns_entry.pack(pady=5, padx=10)
-
-    def save_changes():
-        rules[rule_key]['path'] = dir_var.get()
-        rules[rule_key]['patterns'] = [pattern.strip() for pattern in patterns_var.get().split(",")]
-        save_rules(config_directory, rules)
-        logger.info(f"Rule '{rule_key}' updated.")
-        update_rule_list(rule_frame, rules, config_directory, logger)
-        edit_window.destroy()
-
-    ttkb.Button(edit_window, text="Save", style="success.TButton", command=save_changes).pack(pady=10)
-    ttkb.Button(edit_window, text="Cancel", style="danger.TButton", command=edit_window.destroy).pack(pady=5)
 
 def show_license_info():
     """Display the license information in a message box."""
@@ -505,6 +398,7 @@ def run():
 def load_settings(settings_path):
     """Load settings from the settings file with strict validation and error handling."""
     import os
+    import yaml
     if not os.path.exists(settings_path):
         return {
             "base_directory": "",
@@ -523,7 +417,6 @@ def load_settings(settings_path):
         }
     try:
         with open(settings_path, "r") as file:
-            import yaml
             settings = yaml.safe_load(file)
             # Strict validation: must be a dict and contain required keys
             required_keys = [

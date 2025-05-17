@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2025-05-16
+## [2.1.0] - 2025-05-17
 
 ### Major UI/UX and Theme System Changes
 
@@ -27,6 +27,23 @@
 - Broke circular imports and standardized function signatures across UI modules.
 - Used PowerShell Remove-Item to clean up bytecode and __pycache__ folders.
 - Improved code documentation and maintainability.
+- All automated tests now pass reliably, including UI and non-UI tests.
+- UI tests are automatically skipped in headless environments (e.g., CI servers).
+- Theme Manager UI is fully stable and covered by automated tests.
+- Fixed duplicate/hidden Add Theme button logic and improved theme manager code structure.
+- Improved YAML config and theme file handling, with robust auto-fix and user prompt logic.
+- Documentation and developer comments updated for clarity and maintainability.
+
+### Improvements & Fixes
+
+- Fixed duplicate and shadowed theme manager functions, ensuring only one Add Theme button logic is used in all UI contexts.
+- Resolved all test failures related to Tkinter/ttkbootstrap context and style usage in automated UI tests.
+- Improved test automation: all UI and non-UI tests now pass reliably, including in headless/CI environments (UI tests are skipped if no display is available).
+- Enhanced robustness of YAML config and theme file handling, including auto-fix and user prompt logic for broken or missing files.
+- Cleaned up and modularized UI helper code for maintainability.
+- Improved documentation and developer comments throughout the codebase.
+- Ensured the custom theme manager UI is fully functional and covered by automated tests.
+- Updated requirements and documentation for new test and runtime dependencies.
 
 ---
 

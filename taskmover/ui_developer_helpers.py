@@ -11,8 +11,8 @@ import logging
 
 # Developer and utility helpers
 
-def open_developer_settings(window, settings, save_settings, logger):
-    dev_window = tk.Toplevel(window)
+def open_developer_settings(root, settings, save_settings, logger):
+    dev_window = tk.Toplevel(root)
     dev_window.title("Developer Settings")
     dev_window.geometry("400x400")
     center_window(dev_window)

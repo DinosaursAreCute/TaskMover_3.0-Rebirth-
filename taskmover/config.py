@@ -11,24 +11,104 @@ import logging
 from ttkbootstrap import Style
 
 def load_rules(config_path, fallback_path):
-    """Load rules from a configuration file or fallback to a backup."""
-    try:
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as file:
-                rules = yaml.safe_load(file)
-                for rule in rules.values():
-                    rule.setdefault('unzip', False)  # Add default value for 'unzip'
+    """Load rules from a configuration file or fallback to a backup, auto-fixing broken YAML and missing parameters. If all else fails, ask the user before restoring defaults."""
+    import re
+    import sys
+    required_params = {
+        'patterns': [],
+        'path': '',
+        'unzip': False,
+        'active': False
+    }
+    def clean_yaml_file(path):
+        # Remove lines with Python object tags
+        with open(path, 'r') as f:
+            lines = f.readlines()
+        cleaned = [line for line in lines if not re.match(r'^\s*!!python/object', line) and 'tag:yaml.org,2002:python/object' not in line]
+        with open(path, 'w') as f:
+            f.writelines(cleaned)
+    def fix_missing_params(rules):
+        changed = False
+        for rule in rules.values():
+            for k, v in required_params.items():
+                if k not in rule:
+                    rule[k] = v
+                    changed = True
+        return changed
+    # Try loading, cleaning, and fixing
+    for attempt in range(2):
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as file:
+                    rules = yaml.safe_load(file)
+                if not isinstance(rules, dict):
+                    raise ValueError('Rules file is not a dictionary.')
+                changed = fix_missing_params(rules)
+                if changed:
+                    save_rules(config_path, rules)
                 return rules
-        elif os.path.exists(fallback_path):
-            with open(fallback_path, 'r') as file:
-                rules = yaml.safe_load(file)
-                for rule in rules.values():
-                    rule.setdefault('unzip', False)  # Add default value for 'unzip'
+            elif os.path.exists(fallback_path):
+                with open(fallback_path, 'r') as file:
+                    rules = yaml.safe_load(file)
+                if not isinstance(rules, dict):
+                    raise ValueError('Fallback rules file is not a dictionary.')
+                changed = fix_missing_params(rules)
+                if changed:
+                    save_rules(config_path, rules)
                 return rules
-        else:
-            return create_default_rules(config_path)
-    except Exception as e:
-        raise RuntimeError(f"Failed to load rules: {e}")
+            else:
+                # Only restore defaults without prompt if the file does not exist at all
+                return create_default_rules(config_path)
+        except yaml.YAMLError as e:
+            if attempt == 0 and os.path.exists(config_path):
+                clean_yaml_file(config_path)
+                continue
+            elif attempt == 0 and os.path.exists(fallback_path):
+                clean_yaml_file(fallback_path)
+                continue
+            else:
+                break
+        except Exception as e:
+            if attempt == 0 and os.path.exists(config_path):
+                clean_yaml_file(config_path)
+                continue
+            elif attempt == 0 and os.path.exists(fallback_path):
+                clean_yaml_file(fallback_path)
+                continue
+            else:
+                break
+    # If all else fails and the file exists, ask the user before restoring defaults
+    if os.path.exists(config_path) or os.path.exists(fallback_path):
+        prompt = ("Your rules file could not be loaded or auto-fixed. "
+                  "Would you like to restore the default rules?\n"
+                  "(Click Yes to restore defaults, or No to fix the file yourself and restart TaskMover.)")
+        gui_prompted = False
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            result = messagebox.askyesno("Restore Default Rules?", prompt)
+            root.destroy()
+            gui_prompted = True
+            if result:
+                return create_default_rules(config_path)
+            else:
+                raise RuntimeError("Rules file is invalid. Please fix it manually and restart TaskMover.")
+        except Exception:
+            if not gui_prompted:
+                # Fallback to console prompt only if GUI prompt was not shown
+                print(prompt)
+                answer = input("Restore defaults? [y/N]: ").strip().lower()
+                if answer == 'y':
+                    return create_default_rules(config_path)
+                else:
+                    raise RuntimeError("Rules file is invalid. Please fix it manually and restart TaskMover.")
+            else:
+                # If GUI prompt was shown, do not prompt again
+                raise RuntimeError("Rules file is invalid. Please fix it manually and restart TaskMover.")
+    # If the file truly does not exist, restore defaults without prompt
+    return create_default_rules(config_path)
 
 def create_default_rules(config_path):
     """
