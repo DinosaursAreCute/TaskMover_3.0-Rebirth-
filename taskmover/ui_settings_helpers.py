@@ -95,13 +95,18 @@ def open_settings_window(
 
     # --- Theme Manager Tab ---
     theme_frame = ttkb.Frame(notebook)
-    notebook.add(theme_frame, text="Theme Manager")
+    #notebook.add(theme_frame, text="Theme Manager")
 
     # --- Theme selection dropdown ---
-    ttkb.Label(theme_frame, text="Select Theme to Edit:", font=("Helvetica", 12, "bold")).pack(anchor="w", padx=10, pady=5)
-    theme_names = list(settings.get("custom_themes", {}).keys())
+    ttkb.Label(theme_frame, text="Select Theme to Edit:", font=("Helvetica", 12, "bold")) #.pack(anchor="w", padx=10, pady=5)
+    # Always reload all themes from disk
+    def get_all_theme_names():
+        themes = load_all_themes()
+        return list(themes.keys())
+    def get_builtin_theme_names():
+        return list(ttkb.Style().theme_names())
     theme_select_var = tk.StringVar()
-    theme_select_dropdown = ttkb.Combobox(theme_frame, textvariable=theme_select_var, values=theme_names, state="readonly")
+    theme_select_dropdown = ttkb.Combobox(theme_frame, textvariable=theme_select_var, values=get_all_theme_names(), state="readonly")
     theme_select_dropdown.pack(fill="x", padx=10, pady=2)
 
     # --- Widget/Button type selection dropdown ---
@@ -159,10 +164,31 @@ def open_settings_window(
             color_var.set(theme[widget_style])
         else:
             color_var.set("")
+        # Disable color editing for built-in themes
+        is_builtin = theme_name in get_builtin_theme_names()
+        color_entry.config(state=tk.NORMAL if not is_builtin else tk.DISABLED)
+        color_picker_btn.config(state=tk.NORMAL if not is_builtin else tk.DISABLED)
+        save_color_btn.config(state=tk.NORMAL if not is_builtin else tk.DISABLED)
+        delete_theme_btn.config(state=tk.NORMAL if not is_builtin else tk.DISABLED)
     theme_select_var.trace_add("write", update_color_field)
     widget_type_var.trace_add("write", update_color_field)
     widget_type_dropdown.bind("<<ComboboxSelected>>", update_color_field)
     theme_select_dropdown.bind("<<ComboboxSelected>>", update_color_field)
+
+    # --- Add Theme Button ---
+    def refresh_theme_listbox():
+        # Always reload from disk
+        theme_names = get_all_theme_names()
+        theme_select_dropdown["values"] = theme_names
+        if theme_names:
+            theme_select_var.set(theme_names[0])
+        else:
+            theme_select_var.set("")
+        # Also update the General tab theme dropdown
+        all_themes = list(get_builtin_theme_names()) + theme_names
+        theme_combobox["values"] = all_themes
+        if settings["theme"] not in all_themes:
+            theme_var.set(all_themes[0] if all_themes else "")
 
     # --- Save color for selected widget/button type in selected theme ---
     def save_widget_color():
@@ -173,11 +199,11 @@ def open_settings_window(
             messagebox.showerror("No Theme Selected", "Please select a theme to edit.")
             return
         # Only update custom themes, not built-in themes
-        if theme_name in settings.get("custom_themes", {}):
+        if theme_name not in get_builtin_theme_names():
             theme = get_theme(theme_name) or {}
             theme[widget_style] = color_var.get()
             save_theme(theme_name, theme, logger)
-            settings["custom_themes"][theme_name] = theme
+            refresh_theme_listbox()
         else:
             messagebox.showerror("Not a Custom Theme", "You can only edit and save custom themes.")
 
@@ -229,18 +255,11 @@ def open_settings_window(
                 child.config(bg=theme.get("TMenubar", "#FFFFFF"), fg=theme.get("TLabel", "#000000"))
 
     # --- Buttons for theme actions ---
-    ttkb.Button(theme_frame, text="Save Color for Widget", style="success.TButton", command=save_widget_color).pack(pady=5)
+    save_color_btn = ttkb.Button(theme_frame, text="Save Color for Widget", style="success.TButton", command=save_widget_color)
+    save_color_btn.pack(pady=5)
     ttkb.Button(theme_frame, text="Apply Selected Theme", style="primary.TButton", command=apply_selected_theme).pack(pady=5)
-    
-    # --- Add Theme Button ---
-    def refresh_theme_listbox():
-        theme_names = list(settings.get("custom_themes", {}).keys())
-        theme_select_dropdown["values"] = theme_names
-        if theme_names:
-            theme_select_var.set(theme_names[0])
-        else:
-            theme_select_var.set("")
 
+    # --- Add Theme Button ---
     def add_custom_theme():
         name = simpledialog.askstring("Add Custom Theme", "Enter a name for the new theme:")
         if name:
@@ -257,7 +276,23 @@ def open_settings_window(
             save_theme(name, blank_theme, logger)
             refresh_theme_listbox()
             theme_select_var.set(name)
-    ttkb.Button(theme_frame, text="Add Theme", style="success.TButton", command=add_custom_theme).pack(anchor="w", padx=10, pady=5)
+
+    # --- Delete Theme Button ---
+    def delete_selected_theme():
+        theme_name = theme_select_var.get()
+        if not theme_name:
+            messagebox.showerror("No Theme Selected", "Please select a theme to delete.")
+            return
+        if theme_name in get_builtin_theme_names():
+            messagebox.showerror("Cannot Delete Built-in Theme", "Built-in themes cannot be deleted.")
+            return
+        delete_theme(theme_name, logger)
+        refresh_theme_listbox()
+    delete_theme_btn = ttkb.Button(theme_frame, text="Delete Theme", style="danger.TButton", command=delete_selected_theme)
+    delete_theme_btn.pack(anchor="w", padx=10, pady=5)
+
+    # Initial refresh to sync all theme lists
+    refresh_theme_listbox()
 
     def save_changes():
         settings["organisation_folder"] = organisation_folder_var.get()
@@ -273,6 +308,9 @@ def open_settings_window(
         import os
         settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
         save_settings_func(settings_path, settings, logger)
+        # Apply logging settings immediately
+        from taskmover.logging_config import apply_logging_component_settings
+        apply_logging_component_settings(settings)
         logger.info("Settings saved successfully.")
         settings_window.destroy()
     def close_window():
@@ -282,7 +320,7 @@ def open_settings_window(
     ttkb.Button(button_frame, text="Save", command=save_changes).pack(side="right", padx=10)
     ttkb.Button(button_frame, text="Cancel", command=close_window).pack(side="right", padx=10)
     # Add a button to open the Theme Manager window in the settings UI
-    ttkb.Button(general_frame, text="Open Theme Manager", style="info.TButton", command=lambda: open_theme_manager_window(root, ttkb.Style(), logger)).pack(anchor="w", padx=10, pady=10)
+    #ttkb.Button(general_frame, text="Open Theme Manager", style="info.TButton", command=lambda: open_theme_manager_window(root, ttkb.Style(), logger)).pack(anchor="w", padx=10, pady=10)
 
 def open_theme_manager_window(
     root: tk.Tk,

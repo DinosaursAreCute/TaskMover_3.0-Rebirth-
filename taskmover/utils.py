@@ -15,7 +15,7 @@ from .ui_settings_helpers import (
     open_settings_window, change_theme, choose_color, apply_custom_style
 )
 from .ui_developer_helpers import (
-    open_developer_settings, trigger_developer_function, execute_button
+    trigger_developer_function, execute_button
 )
 from .ui_color_helpers import (
     choose_color_and_update, browse_path_and_update
@@ -28,14 +28,16 @@ from .center_window import center_window
 
 # Utility functions (non-UI)
 def ensure_directory_exists(directory: str | Path, logger: 'logging.Logger | None' = None) -> None:
-    """Ensure a directory exists, creating it if necessary."""
+    import logging
     try:
         Path(directory).mkdir(parents=True, exist_ok=True)
         if logger is not None:
             logger.debug(f"Ensured directory exists: {directory}")
+        logging.getLogger("File Operations").debug(f"Ensured directory exists: {directory}")
     except Exception as e:
         if logger is not None:
             logger.error(f"Failed to create directory '{directory}': {e}")
+        logging.getLogger("File Operations").error(f"Failed to create directory '{directory}': {e}")
         raise
 
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")

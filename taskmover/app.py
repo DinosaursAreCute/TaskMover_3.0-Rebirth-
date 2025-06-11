@@ -23,7 +23,7 @@ from .config import load_or_initialize_rules
 from .ui_menu_helpers import add_menubar
 from .ui_rule_helpers import (
     update_rule_list, toggle_rule_active, toggle_unzip, enable_all_rules, disable_all_rules,
-    delete_rule, delete_multiple_rules, edit_rule
+    delete_rule, delete_multiple_rules, edit_rule, add_rule_button
 )
 from .ui_settings_helpers import (
     open_settings_window, change_theme, apply_custom_style
@@ -80,6 +80,10 @@ def check_first_run(config_directory, base_directory_var, settings, save_setting
 
 def main(rules, logger):
     """Main entry point for the application."""
+    # Ensure logging is configured for all components
+    from .logging_config import configure_logger
+    logger = configure_logger(developer_mode=True)  # Or use settings.get("developer_mode", False) if available
+
     settings = load_settings(logger)
     logger.debug(f"Loaded settings: {settings}")
 
@@ -146,7 +150,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     button_frame.pack(fill="x", padx=10, pady=5, before=rule_frame_container)
     ttkb.Button(button_frame, text="Enable All Rules", style="success.TButton", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Disable All Rules", style="danger.TButton", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: add_rule(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: add_rule_button(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
     ttkb.Button(button_frame, text="Delete Multiple Rules", style="Warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame)).pack(side="left", padx=5)
     
     def show_organization_progress():

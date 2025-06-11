@@ -42,26 +42,34 @@ def update_rule_list(rule_frame, rules, config_path, logger):
         delete_button.pack(side="left", padx=10)
 
 def toggle_rule_active(rule_key, rules, config_path, active, logger):
+    import logging
     rules[rule_key]['active'] = bool(active)
     save_rules(config_path, rules)
-    logger.info(f"Rule '{rule_key}' active state set to {bool(active)}.")
+    logging.getLogger("UI").info(f"User toggled rule '{rule_key}' to {'enabled' if active else 'disabled'}.")
+    logging.getLogger("Rules").info(f"Rule '{rule_key}' active state set to {bool(active)}.")
 
 def toggle_unzip(rule_key, rules, config_path, unzip, logger):
+    import logging
     rules[rule_key]['unzip'] = bool(unzip)
     save_rules(config_path, rules)
-    logger.info(f"Rule '{rule_key}' unzip state set to {bool(unzip)}.")
+    logging.getLogger("UI").info(f"User toggled unzip for rule '{rule_key}' to {bool(unzip)}.")
+    logging.getLogger("Rules").info(f"Rule '{rule_key}' unzip state set to {bool(unzip)}.")
 
 def enable_all_rules(rules, config_path, rule_frame, logger):
+    import logging
     for rule_key, rule in rules.items():
         rule['active'] = True
-        logger.info(f"Rule '{rule_key}' enabled.")
+        logging.getLogger("UI").info(f"User enabled rule '{rule_key}'.")
+        logging.getLogger("Rules").info(f"Rule '{rule_key}' enabled.")
     save_rules(config_path, rules)
     update_rule_list(rule_frame, rules, config_path, logger)
 
 def disable_all_rules(rules, config_path, rule_frame, logger):
+    import logging
     for rule_key, rule in rules.items():
         rule['active'] = False
-        logger.info(f"Rule '{rule_key}' disabled.")
+        logging.getLogger("UI").info(f"User disabled rule '{rule_key}'.")
+        logging.getLogger("Rules").info(f"Rule '{rule_key}' disabled.")
     save_rules(config_path, rules)
     update_rule_list(rule_frame, rules, config_path, logger)
 
@@ -76,6 +84,7 @@ def add_rule_button(rules, config_path, rule_frame, logger, root):
             save_rules(config_path, rules)
             update_rule_list(rule_frame, rules, config_path, logger)
             logger.info(f"Added new rule: {rule_name}")
+            edit_rule(rule_name, rules, config_path, logger, rule_frame)
 
 def delete_rule(rule_key, rules, config_path, logger, rule_frame):
     if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the rule '{rule_key}'?"):
@@ -113,8 +122,13 @@ def edit_rule(rule_key, rules, config_path, logger, rule_frame):
     edit_window = tk.Toplevel()
     edit_window.title(f"Edit Rule: {rule_key}")
     edit_window.geometry("400x300")
+    # Center on the same display as the main window (rule_frame is a child of root)
+    root = rule_frame.winfo_toplevel()
     cw.center_window(edit_window)
     edit_window.attributes('-topmost', True)
+    edit_window.update()  # Ensure the window is drawn
+    edit_window.attributes('-topmost', False)
+    edit_window.grab_set()
     ttkb.Label(edit_window, text=f"Edit Rule: {rule_key}", font=("Helvetica", 12, "bold")).pack(pady=10)
     ttkb.Label(edit_window, text="Directory:").pack(anchor="w", padx=10)
     dir_var = tk.StringVar(value=rules[rule_key]['path'])

@@ -175,8 +175,9 @@ def save_rules(config_path, rules):
 
 def load_settings(settings_path):
     """Load settings from the settings file with strict validation and error handling."""
+    import logging
     if not os.path.exists(settings_path):
-        return {
+        default_settings = {
             "base_directory": "",
             "theme": "superhero",
             "developer_mode": True,
@@ -191,6 +192,8 @@ def load_settings(settings_path):
                 "Settings": 1
             }
         }
+        logging.getLogger("Settings").info(f"Loaded default settings: {default_settings}")
+        return default_settings
     try:
         with open(settings_path, "r") as file:
             data = yaml.safe_load(file)
@@ -201,6 +204,7 @@ def load_settings(settings_path):
         ]
         if not isinstance(data, dict) or not all(k in data for k in required_keys):
             raise ValueError("Settings file is not a valid TaskMover settings dictionary.")
+        logging.getLogger("Settings").info(f"Settings loaded from {settings_path}: {data}")
         return data
     except FileNotFoundError:
         raise FileNotFoundError(f"Settings file not found: {settings_path}")
@@ -210,36 +214,57 @@ def load_settings(settings_path):
         raise RuntimeError(f"Failed to load settings: {e}")
 
 def save_settings(settings_path, settings, logger=None):
-    """Save application settings to a configuration file."""
+    import logging
     try:
         os.makedirs(os.path.dirname(settings_path), exist_ok=True)
         with open(settings_path, "w") as file:
             yaml.dump(settings, file)
+        logging.getLogger("Settings").info(f"Settings saved successfully to {settings_path}.")
         if logger:
             logger.info(f"Settings saved successfully to {settings_path}.")
     except Exception as e:
+        logging.getLogger("Settings").error(f"Failed to save settings: {e}")
         if logger:
             logger.error(f"Failed to save settings: {e}")
         raise RuntimeError(f"Failed to save settings: {e}")
 
 def apply_settings(root, settings, logger):
-    """Apply settings to the application."""
+    import logging
     style = Style()
     try:
         style.theme_use(settings.get("theme", "flatly"))
     except Exception as e:
+        logging.getLogger("UI").error(f"Failed to apply theme: {e}")
         logger.error(f"Failed to apply theme: {e}")
 
     root.configure(bg=settings.get("background_color", "#FFFFFF"))
-    # Note: Tkinter root does not support 'fg' or 'accent_color' directly.
     logger.setLevel(settings.get("logging_level", "INFO"))
 
-    # Apply logging component levels (if needed)
+    # Apply logging component levels
+    apply_logging_component_settings(settings)
     for component, enabled in settings.get("logging_components", {}).items():
         if enabled:
-            logger.info(f"Logging enabled for {component}")
+            logging.getLogger("Settings").info(f"Logging enabled for {component}")
         else:
-            logger.info(f"Logging disabled for {component}")
+            logging.getLogger("Settings").info(f"Logging disabled for {component}")
+
+def apply_logging_component_settings(settings):
+    """
+    Enable or disable logging for each component based on settings['logging_components'].
+    """
+    import logging
+    component_loggers = {
+        "UI": logging.getLogger("UI"),
+        "File Operations": logging.getLogger("File Operations"),
+        "Rules": logging.getLogger("Rules"),
+        "Settings": logging.getLogger("Settings"),
+    }
+    for component, logger in component_loggers.items():
+        enabled = settings.get("logging_components", {}).get(component, 0)
+        if enabled:
+            logger.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.CRITICAL + 1)
 
 def load_or_initialize_rules(config_path, fallback_path, logger=None):
     """Load rules from a configuration file or initialize default rules."""

@@ -10,46 +10,8 @@ from .center_window import center_window
 import logging
 
 # Developer and utility helpers
-
-def open_developer_settings(root, settings, save_settings, logger):
-    dev_window = tk.Toplevel(root)
-    dev_window.title("Developer Settings")
-    dev_window.geometry("400x400")
-    center_window(dev_window)
-
-    ttkb.Label(dev_window, text="Developer Settings", font=("Helvetica", 12, "bold")).pack(pady=10)
-
-    dev_mode_var = tk.StringVar(value="Enabled" if settings.get("developer_mode", False) else "Disabled")
-    ttkb.Label(dev_window, text="Developer Mode:").pack(anchor="w", padx=10)
-    dev_mode_dropdown = ttkb.Combobox(dev_window, textvariable=dev_mode_var, values=["Enabled", "Disabled"], state="readonly")
-    dev_mode_dropdown.pack(fill="x", padx=10, pady=5)
-
-    logging_level_var = tk.StringVar(value=logging.getLevelName(logger.level))
-    ttkb.Label(dev_window, text="Logging Level:").pack(anchor="w", padx=10)
-    logging_level_dropdown = ttkb.Combobox(dev_window, textvariable=logging_level_var, values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], state="readonly")
-    logging_level_dropdown.pack(fill="x", padx=10, pady=5)
-
-    ttkb.Label(dev_window, text="Logging Components:", font=("Helvetica", 10, "bold")).pack(anchor="w", padx=10)
-    components_frame = ttkb.Frame(dev_window)
-    components_frame.pack(fill="x", padx=10, pady=5)
-
-    components = ["UI", "File Operations", "Rules", "Settings"]
-    component_vars = {component: tk.IntVar(value=1) for component in components}
-
-    for component, var in component_vars.items():
-        ttkb.Checkbutton(components_frame, text=component, variable=var).pack(anchor="w")
-
-    def save_dev_settings():
-        settings["developer_mode"] = dev_mode_var.get() == "Enabled"
-        save_settings(settings)
-        logger.setLevel(logging_level_var.get())
-        logger.info(f"Developer mode set to {dev_mode_var.get()}. Logging level set to {logging_level_var.get()}.")
-        for component, var in component_vars.items():
-            logger.info(f"Logging for {component}: {'Enabled' if var.get() else 'Disabled'}")
-        dev_window.destroy()
-
-    ttkb.Button(dev_window, text="Save", command=save_dev_settings).pack(pady=10)
-
+def open_developer_settings(base_directory: str, logger: logging.Logger) -> None:
+    return None  # Placeholder for future developer settings UI
 def trigger_developer_function(base_directory: str, logger: logging.Logger) -> None:
     logger.info("Developer function triggered.")
     if not base_directory:

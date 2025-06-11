@@ -61,6 +61,12 @@ def move_file(file_path: Path, organization_folder: Path, rules: dict, logger: l
                 raise FileNotFoundError(f"Target folder '{target_folder}' does not exist for rule '{folder}'.")
             shutil.move(str(file_path), str(target_folder / file_name))
             logger.info(f"Moved file '{file_name}' to '{target_folder}'")
+            # Unzip if rule requests and file is a zip
+            if rule.get('unzip', False) and file_name.lower().endswith('.zip'):
+                try:
+                    unzip_file(target_folder / file_name, target_folder, logger)
+                except Exception as e:
+                    logger.error(f"Failed to unzip '{file_name}': {e}")
             if file_moved_callback:
                 file_moved_callback(file_name, str(target_folder))
             return str(target_folder)

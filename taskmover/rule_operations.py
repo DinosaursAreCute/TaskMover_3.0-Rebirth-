@@ -12,6 +12,6 @@ def add_rule(rules, config_path, rule_frame, logger, root):
         else:
             rules[rule_name] = {"patterns": [], "path": "", "unzip": False, "active": True}
             save_rules(config_path, rules)
-            rule_frame.update_rules(rules)
+            rule_frame.update_rule_list(rules, config_path, logger)
             messagebox.showinfo("Success", f"Rule '{rule_name}' added successfully.")
             logger.info(f"Added new rule: {rule_name}")
