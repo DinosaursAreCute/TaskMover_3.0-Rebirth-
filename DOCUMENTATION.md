@@ -1,37 +1,21 @@
 # TaskMover Documentation
 
-## What’s New in 2.0.0
+## What’s New in 2.1.0
 
-- Major UI and UX improvements for rule management and settings.
-- Full test automation for settings, dummy file creation, UI integration, themes, and color application.
-- Colorful, detailed test logging for all automated tests.
-- Expanded documentation and test case coverage.
-- Improved error handling and logging throughout the application.
-- Enhanced theme and color customization for the UI.
-- Added developer tools and advanced logging for debugging.
-- Improved compatibility with Windows and cross-platform environments.
-
-## [2025-05-15] Codebase and Test Improvements
-
-- The `load_settings` function now strictly validates the settings file and raises a `RuntimeError` if the file is invalid or missing required keys.
-- UI tests are automatically skipped in headless environments (when no display is available), making CI and remote testing more robust.
-- The test suite was refactored for better compatibility with Tkinter/ttkbootstrap and to avoid false negatives in CI.
-- Exception handling and import issues were fixed for more reliable script and test execution.
-
-### How to run tests in headless environments
-- GUI-related tests will be skipped if no display is detected (e.g., on CI servers or remote shells).
-- To run all tests, ensure a display is available (e.g., run locally on your desktop or use a virtual display on Linux).
-
-### How to handle settings files
-- The application expects a valid YAML settings file with all required keys. If the file is missing or invalid, a `RuntimeError` will be raised and should be handled appropriately.
-
-## [2.1.0] - 2025-05-17
-
-- All automated tests (UI and non-UI) now pass reliably on all supported platforms.
-- UI tests are automatically skipped in headless environments (e.g., CI servers, remote shells).
-- Theme Manager UI is fully stable, with all components covered by automated tests.
-- Fixed duplicate/hidden Add Theme button logic and improved theme manager code structure.
-- YAML config and theme file handling is now robust, with auto-fix and user prompt logic for broken/missing files.
+- Modularized UI logic into helper modules for maintainability and clarity.
+- Removed the Theme Manager and all custom theme/color management features.
+- Removed the Colors tab; all theme management is now handled by a built-in theme.
+- Fixed all major theme application errors and UI crashes.
+- Cleaned up all __pycache__ folders and checked for other unnecessary files.
+- Added type hints and docstrings to all major functions in ui_settings_helpers.py and other helpers.
+- Updated and clarified documentation for theme management and UI structure.
+- Prevented crashes related to unsupported style keys (e.g., Menubar, Listbox, Text).
+- Fixed all crashes related to theme application and widget styling.
+- Broke circular imports and standardized function signatures across UI modules.
+- Used PowerShell Remove-Item to clean up bytecode and __pycache__ folders.
+- Improved code documentation and maintainability.
+- All automated tests now pass reliably, including UI and non-UI tests.
+- UI tests are automatically skipped in headless environments (e.g., CI servers).
 - Documentation and developer comments updated for clarity and maintainability.
 
 ## Overview
@@ -44,11 +28,10 @@ See the [README.md](./README.md) for a step-by-step tutorial on installing, laun
 
 ## Features
 
-- Dynamic theme loading based on user settings.
+- Built-in theme for the UI (no custom theme or color management).
 - Customizable file organization rules.
 - Developer mode for advanced debugging.
 - Integrated logging for better traceability.
-- Support for custom UI themes and colors.
 - Automated tests for all major features.
 
 ## Setup
@@ -398,78 +381,22 @@ enable_all_rules(rules, config_path, rule_frame, logger)
 disable_all_rules(rules, config_path, rule_frame, logger)
 ```
 
-## Theme System and UI Structure (v2.0+)
+## Theme System and UI Structure (v2.1.0+)
 
-### Theme Manager
+### Theme Management
 
-- The Theme Manager tab in Settings is now the single place for all theme customization.
-- You can create, edit, save, apply, and delete custom themes.
-- Only custom themes are editable; built-in themes are read-only and cannot be overwritten.
-- Custom themes are included in the main theme selector in the General tab.
-- All theme changes are applied live, and only supported widgets are styled (no more errors for Menubar, Listbox, or Text styling).
-
-### Removal of Colors Tab
-
-- The previous Colors tab has been removed for simplicity and to avoid confusion.
-- All color and theme customization is now centralized in the Theme Manager.
+- TaskMover now uses a single built-in theme for its appearance.
+- The Theme Manager tab, custom themes, and color customization features have been removed as of v2.1.0.
+- All color and theme customization is currently unavailable.
 
 ### How to Use
 
-1. Open the Settings window from the menu.
-2. Go to the Theme Manager tab.
-3. Select or create a custom theme.
-4. Edit widget/button colors as desired.
-5. Save and apply your custom theme.
+- Theme customization is not available in this version. The application uses a default built-in theme.
 
 ---
 
-## `tests/test_app.py`
+## Known Issues
 
-### `TestApp`
-
-**Purpose**: Contains unit tests for core functions in `app.py`.
-
-#### `setUp()`
-
-**Purpose**: Sets up the test environment by initializing a mock logger and defining test paths.
-
-#### `tearDown()`
-
-**Purpose**: Cleans up test files and directories created during the tests.
-
-#### `test_load_settings_creates_defaults()`
-
-**Purpose**: Tests that default settings are created if no settings file exists.
-**Assertions**:
-
-- Checks that the `theme` and `developer_mode` keys exist in the settings.
-- Verifies that the logger logs a success message.
-
-#### `test_save_settings()`
-
-**Purpose**: Tests that settings are saved to the correct file.
-**Assertions**:
-
-- Checks that the settings file exists after saving.
-- Verifies that the logger logs a success message.
-
-#### `test_create_dummy_files()`
-
-**Purpose**: Tests that dummy files are created in the base directory.
-**Assertions**:
-
-- Checks that the base directory exists.
-- Ensures that dummy files are created in the directory.
-- Verifies that the logger logs messages for directory creation and file creation.
-- Ensures cleanup after the test.
-
-### Known Issues
-
-- **Developer Settings Buttons**: The "Save" and "Cancel" buttons in the developer settings window are positioned outside the visible window.
-- **Browse Button**: The "Browse" button is currently not available in some parts of the application.
-- **Dummy Files**: Creating dummy files does not work as expected in certain scenarios.
-- **Log Categories**: Logging categories are currently unavailable.
-
-This section documents the automated tests included in the `tests/test_app.py` file, providing a health check for core functionalities.
+- None as of v2.1.0.
 
 This documentation provides a comprehensive overview of all functions in the TaskMover project, making it easier for developers to understand and contribute to the codebase.

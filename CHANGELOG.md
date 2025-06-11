@@ -5,11 +5,10 @@
 ### Major UI/UX and Theme System Changes
 
 - Modularized UI logic into helper modules (e.g., ui_menu_helpers.py, ui_rule_helpers.py, etc.) for maintainability and clarity.
-- Added a Theme Manager tab for full CRUD (create, read, update, delete) on custom themes.
-- Removed the Colors tab; all theme management is now in the Theme Manager tab.
-- Only custom themes are editable; built-in themes cannot be overwritten or modified.
-- Custom themes are now included in the main theme selector in the General tab.
-- Fixed all major theme application errors (e.g., no more attempts to style unsupported widgets like Menubar, Listbox, or Text via ttkbootstrap).
+- Removed the Theme Manager and all custom theme/color management features.
+- Removed the Colors tab; all theme management is now handled by a built-in theme.
+- Fixed all major theme application errors (e.g., no more attempts to style unsupported widgets like Menubar, Listbox, or Text
+  via ttkbootstrap).
 - Suppressed info popups for theme save/apply actions for a smoother workflow.
 - Cleaned up all __pycache__ folders and checked for other unnecessary files.
 - Added type hints and docstrings to all major functions in ui_settings_helpers.py and other helpers.
@@ -21,6 +20,10 @@
 - Fixed all crashes related to theme application and widget styling.
 - Fixed logic to prevent built-in theme modification.
 - Fixed all references to removed Colors tab and legacy color logic.
+- Fixed all previously known UI bugs, including:
+  - Developer Settings "Save" and "Cancel" button positioning.
+  - Browse button availability in all relevant windows.
+  - Dummy file creation in all scenarios.
 
 ### Developer/Codebase
 
@@ -29,21 +32,21 @@
 - Improved code documentation and maintainability.
 - All automated tests now pass reliably, including UI and non-UI tests.
 - UI tests are automatically skipped in headless environments (e.g., CI servers).
-- Theme Manager UI is fully stable and covered by automated tests.
-- Fixed duplicate/hidden Add Theme button logic and improved theme manager code structure.
 - Improved YAML config and theme file handling, with robust auto-fix and user prompt logic.
 - Documentation and developer comments updated for clarity and maintainability.
 
 ### Improvements & Fixes
 
-- Fixed duplicate and shadowed theme manager functions, ensuring only one Add Theme button logic is used in all UI contexts.
 - Resolved all test failures related to Tkinter/ttkbootstrap context and style usage in automated UI tests.
 - Improved test automation: all UI and non-UI tests now pass reliably, including in headless/CI environments (UI tests are skipped if no display is available).
 - Enhanced robustness of YAML config and theme file handling, including auto-fix and user prompt logic for broken or missing files.
 - Cleaned up and modularized UI helper code for maintainability.
 - Improved documentation and developer comments throughout the codebase.
-- Ensured the custom theme manager UI is fully functional and covered by automated tests.
 - Updated requirements and documentation for new test and runtime dependencies.
+
+### Known Bugs
+
+- None as of this release.
 
 ---
 
