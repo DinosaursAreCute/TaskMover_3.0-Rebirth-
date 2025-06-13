@@ -29,7 +29,7 @@ from .ui_settings_helpers import (
     open_settings_window, change_theme, apply_custom_style
 )
 from .ui_developer_helpers import (
-    open_developer_settings as open_developer_settings,
+    #open_developer_settings as open_developer_settings,
     trigger_developer_function
 )
 from .ui_color_helpers import (
