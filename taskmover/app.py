@@ -141,7 +141,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
 
     def _on_mousewheel(event):
         canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-    canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    canvas.bind("<MouseWheel>", _on_mousewheel)
 
     update_rule_list(rule_frame, rules, config_directory, logger)
 

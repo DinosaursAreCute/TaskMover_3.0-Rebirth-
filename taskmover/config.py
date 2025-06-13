@@ -182,8 +182,8 @@ def load_settings(settings_path):
             "theme": "superhero",
             "developer_mode": True,
             "logging_level": "DEBUG",
-            "accent_color": "#FFFFFF",
-            "background_color": "#FFFFFF",
+            "accent_color": "#0CEBC2",
+            "background_color": "#FA069C",
             "text_color": "#000000",
             "logging_components": {
                 "UI": 1,
@@ -237,7 +237,7 @@ def apply_settings(root, settings, logger):
         logging.getLogger("UI").error(f"Failed to apply theme: {e}")
         logger.error(f"Failed to apply theme: {e}")
 
-    root.configure(bg=settings.get("background_color", "#FFFFFF"))
+   # root.configure(bg=settings.get("background_color", "#FFFFFF"))
     logger.setLevel(settings.get("logging_level", "INFO"))
 
     # Apply logging component levels
