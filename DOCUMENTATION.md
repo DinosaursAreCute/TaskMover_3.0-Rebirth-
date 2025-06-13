@@ -1,5 +1,18 @@
 # TaskMover Documentation
 
+## What’s New in 2.2.0 (2025-06-13)
+
+- Scrollable main window with smooth scrolling for all rule content (except log area).
+- Inline pattern editing with dynamic add fields and a plus (+) button for adding multiple patterns at once.
+- Only the last add pattern field shows a plus button; focus moves to new field automatically.
+- Patterns are never saved as '<add pattern>' placeholder.
+- UI now uses a single, unified scrollbar for the main content area.
+- Mousewheel scrolling is only enabled when hovering over the main content area.
+- Removed redundant scrollbars and canvas logic from both app.py and ui_rule_helpers.py.
+- Improved pattern editing workflow and usability.
+- Fixed geometry manager conflicts and duplicate function declarations in pattern editing logic.
+- Fixed issues with pattern field focus and placeholder handling.
+
 ## What’s New in 2.1.0
 
 - Modularized UI logic into helper modules for maintainability and clarity.

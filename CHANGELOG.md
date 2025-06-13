@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.2.0] - 2025-06-13
+
+### Major UI/UX Improvements
+
+- Scrollable main window with smooth scrolling for all rule content (except log area).
+- Inline pattern editing with dynamic add fields and a plus (+) button for adding multiple patterns at once.
+- Only the last add pattern field shows a plus button; focus moves to new field automatically.
+- Change destination path by clicking the destination field.
+- UI now uses a single, unified scrollbar for the main content area.
+- Mousewheel scrolling is only enabled when hovering over the main content area.
+
+
+### Changed
+
+- Removed redundant scrollbars and canvas logic from both app.py and ui_rule_helpers.py.
+- Improved pattern editing workflow and usability.
+
+### Fixed
+
+- Fixed geometry manager conflicts and duplicate function declarations in pattern editing logic.
+- Fixed issues with pattern field focus and placeholder handling.
+- Fixed issue where widgets would not use the full width
+---
+
 ## [2.1.0] - 2025-05-17
 
 ### Major UI/UX and Theme System Changes

@@ -116,7 +116,20 @@ def main(rules, logger):
     logger.info("Application exited successfully.")
 
 def setup_ui(root, base_path_var, rules, config_directory, style, settings, logger):
-    """Set up the user interface."""
+    """
+    Set up the main user interface for TaskMover, including the scrollable main window,
+    rule list, and all rule operation buttons. The main content area is scrollable with
+    smooth scrolling enabled only when hovering over the main content. The log area (if enabled)
+    remains outside the scrollable region.
+    Args:
+        root: The main Tkinter window.
+        base_path_var: StringVar for the base directory.
+        rules: The rules dictionary.
+        config_directory: Path to the config directory.
+        style: The ttkbootstrap style object.
+        settings: The application settings dictionary.
+        logger: The logger instance.
+    """
     # Apply settings on startup
     from .config import apply_settings
     apply_settings(root, settings, logger)
@@ -124,7 +137,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     # Add Menubar
     add_menubar(root, style, settings, save_settings, logger)
 
-    # Rule List and Scrollbar
+    # --- Rule List and Scrollbar (scroll logic handled here, not in ui_rule_helpers) ---
     rule_frame_container = ttkb.Frame(root, padding=0)
     rule_frame_container.pack(fill="both", expand=True, padx=10, pady=10)
     canvas = tk.Canvas(rule_frame_container, borderwidth=0, highlightthickness=0)
@@ -137,11 +150,29 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
 
     def on_frame_configure(event):
         canvas.configure(scrollregion=canvas.bbox("all"))
+        canvas.itemconfig("all", width=canvas.winfo_width())
     rule_frame.bind("<Configure>", on_frame_configure)
+    canvas.bind("<Configure>", on_frame_configure)
 
     def _on_mousewheel(event):
-        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-    canvas.bind("<MouseWheel>", _on_mousewheel)
+        """
+        Handle mouse wheel events for smooth scrolling in the main window canvas.
+        Scrolls in small increments for a smoother user experience.
+        Args:
+            event: The Tkinter mouse wheel event.
+        """
+        # Smooth scroll: use smaller increments and multiple events per scroll
+        if event.delta:
+            for _ in range(abs(event.delta) // 40):
+                canvas.yview_scroll(int(-1 * (event.delta / abs(event.delta))), "units")
+        else:
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    def _bind_mousewheel(event):
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    def _unbind_mousewheel(event):
+        canvas.unbind_all("<MouseWheel>")
+    rule_frame.bind("<Enter>", _bind_mousewheel)
+    rule_frame.bind("<Leave>", _unbind_mousewheel)
 
     update_rule_list(rule_frame, rules, config_directory, logger)
 
