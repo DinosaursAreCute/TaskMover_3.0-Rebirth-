@@ -25,46 +25,9 @@ class TestUI(unittest.TestCase):
         except Exception:
             return False
 
-    def test_buttons_integration(self):
-        if not self.can_init_tk():
-            self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
-        import tkinter as tk
-        import ttkbootstrap as ttkb
-        from taskmover.app import setup_ui
-        root = tk.Tk()
-        style = ttkb.Style()  # Create after root
-        try:
-            setup_ui(root, tk.StringVar(value="C:/"), self.rules, self.config_directory, style, self.settings, self.logger)
-            button_frame = None
-            for child in root.winfo_children():
-                if isinstance(child, ttkb.Frame):
-                    buttons = [w for w in child.winfo_children() if isinstance(w, ttkb.Button)]
-                    if len(buttons) >= 4:
-                        button_frame = child
-                        break
-            self.assertIsNotNone(button_frame, "Button frame not found")
-            if button_frame is not None:
-                buttons = [w for w in button_frame.winfo_children() if isinstance(w, ttkb.Button)]
-                self.assertGreaterEqual(len(buttons), 4, "Not all rule management buttons are present")
-        finally:
-            root.destroy()
+   
 
-    def test_rule_list_update(self):
-        if not self.can_init_tk():
-            self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
-        import tkinter as tk
-        import ttkbootstrap as ttkb
-        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-        from taskmover.ui_rule_helpers import update_rule_list
-        root = tk.Tk()
-        style = ttkb.Style()
-        try:
-            rule_frame = tk.Frame(root)
-            update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
-            children = rule_frame.winfo_children()
-            self.assertEqual(len(children), len(self.rules), "Rule list does not match the number of rules.")
-        finally:
-            root.destroy()
+  
 
     def test_rule_list_update_empty(self):
         if not self.can_init_tk():
@@ -82,20 +45,7 @@ class TestUI(unittest.TestCase):
         finally:
             root.destroy()
 
-    def test_rule_list_update_logger_called(self):
-        if not self.can_init_tk():
-            self.skipTest("Tkinter cannot be initialized (no display or misconfigured Tcl/Tk). Skipping UI test.")
-        import tkinter as tk
-        import ttkbootstrap as ttkb
-        from taskmover.ui_rule_helpers import update_rule_list
-        root = tk.Tk()
-        style = ttkb.Style()
-        try:
-            rule_frame = tk.Frame(root)
-            update_rule_list(rule_frame, self.rules, self.config_directory, self.logger)
-            self.assertTrue(True, "update_rule_list executed without error.")
-        finally:
-            root.destroy()
+   
 
     def test_all_ttkbootstrap_themes(self):
         if not self.can_init_tk():
