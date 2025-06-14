@@ -27,6 +27,10 @@ def organize_files(settings: dict, rules: dict, logger: logging.Logger, organisa
     # Access the organization folder from settings if not provided
     if not organisation_folder:
         organisation_folder = settings.get("organisation_folder", "")
+    if organisation_folder is None:
+        logger.error("No organization folder specified.")
+        messagebox.showerror("Directory Not Found", "No organization folder specified. Please check your settings.")
+        return
     org_path = Path(organisation_folder)
     if not organisation_folder or not org_path.exists():
         logger.error(f"Directory '{organisation_folder}' does not exist.")
@@ -73,7 +77,6 @@ def move_file(file_path: Path, organization_folder: Path, rules: dict, logger: l
                 file_moved_callback(file_name, str(target_folder))
             return str(target_folder)
     logger.warning(f"No matching rule found for file '{file_name}'")
-    messagebox.showwarning("No Rule Match", f"No matching rule was found for file '{file_name}'. The file was not moved.")
     return None
 
 def unzip_file(zip_path: Path, extract_to: Path, logger: logging.Logger) -> None:

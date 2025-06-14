@@ -9,6 +9,7 @@ import os
 import yaml
 import logging
 from ttkbootstrap import Style
+import uuid
 
 def load_rules(config_path, fallback_path):
     """Load rules from a configuration file or fallback to a backup, auto-fixing broken YAML and missing parameters. If all else fails, ask the user before restoring defaults."""
@@ -34,6 +35,14 @@ def load_rules(config_path, fallback_path):
                 if k not in rule:
                     rule[k] = v
                     changed = True
+            # Assign UUID if missing
+            if 'id' not in rule:
+                rule['id'] = str(uuid.uuid4())
+                changed = True
+            # Assign priority if missing
+            if 'priority' not in rule:
+                rule['priority'] = 0
+                changed = True
         return changed
     # Try loading, cleaning, and fixing
     for attempt in range(2):
@@ -172,6 +181,7 @@ def save_rules(config_path, rules):
             yaml.dump(rules, file, default_flow_style=False)
     except Exception as e:
         raise RuntimeError(f"Failed to save rules: {e}")
+    
 
 def load_settings(settings_path):
     """Load settings from the settings file with strict validation and error handling."""

@@ -12,6 +12,7 @@ from tkinter import Menu, filedialog, messagebox, simpledialog, colorchooser  # 
 import yaml  # Import yaml to fix NameError
 import ttkbootstrap as ttkb
 import tkinter.scrolledtext as scrolledtext
+from typing import Any
 
 from .config import load_rules, create_default_rules, save_rules, load_settings, save_settings
 from .file_operations import organize_files, move_file, start_organization  # Fixed relative import
@@ -130,6 +131,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
         settings: The application settings dictionary.
         logger: The logger instance.
     """
+    logger.info("Setting up main UI.")
     # Apply settings on startup
     from .config import apply_settings
     apply_settings(root, settings, logger)
@@ -142,18 +144,133 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     rule_frame_container.pack(fill="both", expand=True, padx=10, pady=10)
     canvas = tk.Canvas(rule_frame_container, borderwidth=0, highlightthickness=0)
     scrollbar = ttkb.Scrollbar(rule_frame_container, orient="vertical", command=canvas.yview)
-    rule_frame = ttkb.Frame(canvas, padding=10)
-    canvas.create_window((0, 0), window=rule_frame, anchor="nw")
+    geometry_logger = logging.getLogger("geometry")
+
+    # --- Event Handlers (must be defined before create_rule_frame) ---
+    def on_frame_configure(event=None):
+        try:
+            geometry_logger.debug(f"<Configure> event: widget={event.widget if event else None}, width={canvas.winfo_width()}, height={canvas.winfo_height()}")
+            update_canvas_scrollregion()
+            if rule_refs["rule_window_id"] in canvas.find_all():
+                canvas.itemconfig(rule_refs["rule_window_id"], width=canvas.winfo_width())
+            else:
+                geometry_logger.warning(f"rule_window_id {rule_refs['rule_window_id']} not found in canvas.")
+        except Exception as e:
+            import traceback
+            geometry_logger.error(f"Exception in on_frame_configure: {e}\n{traceback.format_exc()}")
+            try:
+                def log_widget_tree(widget, prefix=""):
+                    geometry_logger.debug(f"{prefix}{widget.winfo_class()} {widget.winfo_name()} ({widget})")
+                    for child in widget.winfo_children():
+                        log_widget_tree(child, prefix + "  ")
+                log_widget_tree(root)
+            except Exception as tree_exc:
+                geometry_logger.error(f"Exception logging widget tree: {tree_exc}")
+    def _on_mousewheel(event):
+        """
+        Handle mouse wheel events for smooth scrolling in the main window canvas.
+        Scrolls in small increments for a smoother user experience.
+        Args:
+            event: The Tkinter mouse wheel event.
+        """
+        # Smooth scroll: use smaller increments and multiple events per scroll
+        if event.delta:
+            for _ in range(abs(event.delta) // 40):
+                canvas.yview_scroll(int(-1 * (event.delta / abs(event.delta))), "units")
+        else:
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    def _bind_mousewheel(event): # type: ignore
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    def _unbind_mousewheel(event): # type: ignore
+        canvas.unbind_all("<MouseWheel>")
+
+    # Use a container to hold mutable references
+    rule_refs: dict[str, Any] = {"rule_frame": None, "rule_window_id": None}
+    def create_rule_frame():
+        # Destroy old frame and window if present
+        if rule_refs["rule_window_id"] is not None:
+            try:
+                canvas.delete(rule_refs["rule_window_id"])
+            except Exception:
+                pass
+        if rule_refs["rule_frame"] is not None:
+            try:
+                rule_refs["rule_frame"].destroy()
+            except Exception:
+                pass
+        rule_frame = ttkb.Frame(canvas, padding=10)
+        rule_window_id = canvas.create_window((0, 0), window=rule_frame, anchor="nw")
+        rule_refs["rule_frame"] = rule_frame
+        rule_refs["rule_window_id"] = rule_window_id
+        # Bind events to the new frame
+        rule_frame.bind("<Configure>", on_frame_configure)
+        rule_frame.bind("<Enter>", _bind_mousewheel)
+        rule_frame.bind("<Leave>", _unbind_mousewheel)
+        return rule_frame, rule_window_id
+    # Initial creation
+    rule_frame, rule_window_id = create_rule_frame()
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
-    def on_frame_configure(event):
-        canvas.configure(scrollregion=canvas.bbox("all"))
-        canvas.itemconfig("all", width=canvas.winfo_width())
-    rule_frame.bind("<Configure>", on_frame_configure)
-    canvas.bind("<Configure>", on_frame_configure)
-
+    def update_canvas_scrollregion():
+        try:
+            window_ids = canvas.find_all()
+            geometry_logger.debug(f"Checking rule_window_id {rule_refs['rule_window_id']} in canvas.find_all(): {window_ids}")
+            if rule_refs["rule_window_id"] not in window_ids:
+                geometry_logger.warning(f"rule_window_id {rule_refs['rule_window_id']} missing from canvas. Self-healing: rebuilding rule_frame and window item.")
+                create_rule_frame()
+                update_rule_list_preserve_scroll(rules, config_directory, logger)
+                canvas.after_idle(update_canvas_scrollregion)
+                return
+            log_height = 0
+            if settings.get("developer_mode", False):
+                for child in root.winfo_children():
+                    if str(child).endswith("log_frame") or getattr(child, 'winfo_name', lambda: None)() == 'log_frame':
+                        log_height = child.winfo_height()
+                        break
+            canvas.update_idletasks()
+            bbox = list(canvas.bbox("all")) if canvas.bbox("all") else [0, 0, 0, 0]
+            if len(bbox) < 4:
+                bbox = [0, 0, 0, 0]
+            if log_height:
+                bbox[3] = max(0, bbox[3] - log_height)
+            geometry_logger.debug(f"update_canvas_scrollregion: bbox={bbox}, log_height={log_height}")
+            if not canvas.winfo_ismapped():
+                geometry_logger.debug(f"Canvas {canvas} is not mapped - skipping scrollregion update.")
+                return
+            canvas.configure(scrollregion=(bbox[0], bbox[1], bbox[2], bbox[3]))
+        except Exception as e:
+            import traceback
+            geometry_logger.error(f"Exception in update_canvas_scrollregion: {e}\n{traceback.format_exc()}")
+            try:
+                def log_widget_tree(widget, prefix=""):
+                    geometry_logger.debug(f"{prefix}{widget.winfo_class()} {widget.winfo_name()} ({widget})")
+                    for child in widget.winfo_children():
+                        log_widget_tree(child, prefix + "  ")
+                log_widget_tree(root)
+            except Exception as tree_exc:
+                geometry_logger.error(f"Exception logging widget tree: {tree_exc}")
+    # --- Event Handlers (must be defined before create_rule_frame) ---
+    def on_frame_configure(event=None):
+        try:
+            geometry_logger.debug(f"<Configure> event: widget={event.widget if event else None}, width={canvas.winfo_width()}, height={canvas.winfo_height()}")
+            update_canvas_scrollregion()
+            if rule_refs["rule_window_id"] in canvas.find_all():
+                canvas.itemconfig(rule_refs["rule_window_id"], width=canvas.winfo_width())
+            else:
+                geometry_logger.warning(f"rule_window_id {rule_refs['rule_window_id']} not found in canvas.")
+        except Exception as e:
+            import traceback
+            geometry_logger.error(f"Exception in on_frame_configure: {e}\n{traceback.format_exc()}")
+            try:
+                def log_widget_tree(widget, prefix=""):
+                    geometry_logger.debug(f"{prefix}{widget.winfo_class()} {widget.winfo_name()} ({widget})")
+                    for child in widget.winfo_children():
+                        log_widget_tree(child, prefix + "  ")
+                log_widget_tree(root)
+            except Exception as tree_exc:
+                geometry_logger.error(f"Exception logging widget tree: {tree_exc}")
     def _on_mousewheel(event):
         """
         Handle mouse wheel events for smooth scrolling in the main window canvas.
@@ -171,16 +288,17 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
     def _unbind_mousewheel(event):
         canvas.unbind_all("<MouseWheel>")
-    rule_frame.bind("<Enter>", _bind_mousewheel)
-    rule_frame.bind("<Leave>", _unbind_mousewheel)
+    rule_refs["rule_frame"].bind("<Enter>", _bind_mousewheel)
+    rule_refs["rule_frame"].bind("<Leave>", _unbind_mousewheel)
 
     def update_rule_list_preserve_scroll(rules, config_path, logger):
+        logger.info("Updating rule list with scroll preservation.")
         try:
             yview = canvas.yview()
         except Exception:
             yview = (0, 0)
-        update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_preserve_scroll)
-        # Delay restoring scroll position to allow layout to settle
+        # Always use the current rule_frame from rule_refs
+        update_rule_list(rule_refs["rule_frame"], rules, config_path, logger, update_rule_list_preserve_scroll)
         def restore_scroll():
             try:
                 canvas.yview_moveto(yview[0])
@@ -194,10 +312,11 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     # Update all button callbacks to use the scroll-preserving function
     button_frame = ttkb.Frame(root, padding=10)
     button_frame.pack(fill="x", padx=10, pady=5, before=rule_frame_container)
-    ttkb.Button(button_frame, text="Enable All Rules", style="success.TButton", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger, update_rule_list_preserve_scroll)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Disable All Rules", style="danger.TButton", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger, update_rule_list_preserve_scroll)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: add_rule_button(rules, config_directory, rule_frame, logger, root, update_rule_list_preserve_scroll)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Delete Multiple Rules", style="Warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, update_rule_list_preserve_scroll)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Enable All Rules", style="success.TButton", command=lambda: (logger.info("Enable all rules clicked."), enable_all_rules(rules, config_directory, rule_refs["rule_frame"], logger, update_rule_list_preserve_scroll))).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Disable All Rules", style="danger.TButton", command=lambda: (logger.info("Disable all rules clicked."), disable_all_rules(rules, config_directory, rule_refs["rule_frame"], logger, update_rule_list_preserve_scroll))).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: (logger.info("Add rule clicked."), add_rule_button(rules, config_directory, rule_refs["rule_frame"], logger, root, update_rule_list_preserve_scroll))).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Delete Multiple Rules", style="Warning.TButton", command=lambda: (logger.info("Delete multiple rules clicked."), delete_multiple_rules(rules, config_directory, logger, rule_refs["rule_frame"], update_rule_list_preserve_scroll))).pack(side="left", padx=5)
+    #ttkb.Button(button_frame, text="Reload List", style="info.TButton", command=lambda: update_rule_list_preserve_scroll(rules, config_directory, logger)).pack(side="left", padx=5)
     
     def show_organization_progress():
         # Close any existing progress window before opening a new one
@@ -247,22 +366,50 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
         # Do not close the window automatically; user can close it manually
         progress_win.grab_release()  # Release grab when done (optional, if you add a close button)
 
-    ttkb.Button(button_frame, text="Start Organization", style="info.TButton", command=show_organization_progress).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Start Organization", style="info.TButton", command=lambda: (logger.info("Start organization clicked."), show_organization_progress())).pack(side="left", padx=5)
 
-    # Show log display widget only in developer mode
-    if settings.get("developer_mode", False):
-        log_frame = ttkb.Frame(root, padding=5)
-        log_frame.pack(fill="both", expand=False, padx=10, pady=(0,10), side="bottom")
-        log_label = ttkb.Label(log_frame, text="Application Log:", font=("Arial", 15, "bold"))
-        log_label.pack(anchor="w")
-        log_widget = scrolledtext.ScrolledText(log_frame, height=8, state="normal", wrap="word")
+    # --- Developer Log Window ---
+    def open_developer_log_window():
+        if hasattr(root, '_dev_log_window') and root._dev_log_window is not None and tk.Toplevel.winfo_exists(root._dev_log_window):
+            root._dev_log_window.lift()
+            root._dev_log_window.focus_force()
+            return
+        dev_log_window = tk.Toplevel(root)
+        dev_log_window.title("Developer Log")
+        dev_log_window.geometry("900x300")
+        log_label = ttkb.Label(dev_log_window, text="Application Log:", font=("Arial", 15, "bold"))
+        log_label.pack()
+        log_widget = scrolledtext.ScrolledText(dev_log_window, height=12, state="normal", wrap="word")
         log_widget.pack(fill="both", expand=True)
-
-        # Attach custom handler to logger
         text_handler = TextHandler(log_widget)
         formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%H:%M:%S')
         text_handler.setFormatter(formatter)
         logger.addHandler(text_handler)
+        root._dev_log_window = dev_log_window
+        def on_close():
+            logger.removeHandler(text_handler)
+            root._dev_log_window = None
+            dev_log_window.destroy()
+        dev_log_window.protocol("WM_DELETE_WINDOW", on_close)
+    root.open_developer_log_window = open_developer_log_window
+
+    # Bind Ctrl+R to reload the rule list
+    def on_ctrl_r(event=None):
+        logger.info("Manual reload of rule list triggered by Ctrl+R.")
+        update_rule_list_preserve_scroll(rules, config_directory, logger)
+        return "break"  # Prevent default behavior
+    root.bind_all('<Control-r>', on_ctrl_r)
+    root.bind_all('<Control-R>', on_ctrl_r)
+
+    # --- Full UI Rebuild Helper ---
+    def rebuild_main_ui():
+        for child in root.winfo_children():
+            try:
+                child.destroy()
+            except Exception:
+                pass
+        setup_ui(root, base_path_var, rules, config_directory, style, settings, logger)
+    root.rebuild_main_ui = rebuild_main_ui
 
 def browse_path(path_var, logger):
     """Browse and select a directory."""

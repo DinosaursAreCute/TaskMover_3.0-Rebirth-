@@ -90,21 +90,15 @@ def open_settings_window(
     dev_mode_cb = ttkb.Checkbutton(general_frame, text="Enable Developer Mode", variable=developer_mode_var)
     dev_mode_cb.pack(anchor="w", padx=10, pady=5)
     Tooltip(dev_mode_cb, "Enable advanced developer features.")
-    ttkb.Label(general_frame, text="Logging Level:").pack(anchor="w", padx=10, pady=5)
-    logging_level_var = tk.StringVar(value=settings.get("logging_level", "INFO"))
-    log_level_cb = ttkb.Combobox(general_frame, textvariable=logging_level_var, values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], state="readonly")
-    log_level_cb.pack(fill="x", padx=10, pady=5)
-    Tooltip(log_level_cb, "Set the logging level for the application.")
-    ttkb.Label(general_frame, text="Logging Components:", font=("Helvetica", 10, "bold")).pack(anchor="w", padx=10, pady=5)
-    components_frame = ttkb.Frame(general_frame)
-    components_frame.pack(fill="x", padx=10, pady=5)
-    components = ["UI", "File Operations", "Rules", "Settings"]
-    component_vars = {component: tk.IntVar(value=settings.get("logging_components", {}).get(component, 0)) for component in components}
-    for component, var in component_vars.items():
-        cb = ttkb.Checkbutton(components_frame, text=component, variable=var)
-        cb.pack(anchor="w")
-        Tooltip(cb, f"Enable logging for {component} component.")
-    ttkb.Button(general_frame, text="Create Dummy Files", command=lambda: trigger_developer_function(organisation_folder_var.get(), logger)).pack(anchor="w", padx=10, pady=10)
+    # Developer Log Button
+    def open_log():
+        open_log_fn = getattr(root, "open_developer_log_window", None)
+        if callable(open_log_fn):
+            open_log_fn()
+        else:
+            messagebox.showwarning("Developer Log", "Developer log window is not available.")
+    ttkb.Button(general_frame, text="Open Developer Log", command=open_log).pack(anchor="w", padx=10, pady=5)
+    Tooltip(general_frame, "Open the developer log window.")
 
     # --- Theme Manager Tab ---
     theme_frame = ttkb.Frame(notebook)
@@ -307,33 +301,90 @@ def open_settings_window(
     # Initial refresh to sync all theme lists
     refresh_theme_listbox()
 
+    # --- UI Behavior Tab ---
+    behavior_frame = ttkb.Frame(notebook)
+    notebook.add(behavior_frame, text="UI Behavior")
+    ttkb.Label(behavior_frame, text="UI Behavior Settings", font=("Helvetica", 14, "bold")).pack(pady=10)
+    # Collapse on start toggle
+    collapse_on_start_var = tk.BooleanVar(value=settings.get("collapse_on_start", True))
+    ttkb.Checkbutton(behavior_frame, text="Collapse all rules on app start", variable=collapse_on_start_var).pack(anchor="w", padx=10, pady=5)
+    Tooltip(behavior_frame, "If enabled, all rules will be collapsed when the app starts.")
+    # Placeholder for future features
+    ttkb.Label(behavior_frame, text="--- Rule Priority Features (Coming Soon) ---", font=("Helvetica", 10, "italic")).pack(anchor="w", padx=10, pady=10)
+    ttkb.Checkbutton(behavior_frame, text="Allow drag-and-drop rule reordering (not yet implemented)", state="disabled").pack(anchor="w", padx=20, pady=2)
+    ttkb.Checkbutton(behavior_frame, text="Show rule priority as editable field (not yet implemented)", state="disabled").pack(anchor="w", padx=20, pady=2)
+    ttkb.Checkbutton(behavior_frame, text="Prompt on rule conflict (not yet implemented)", state="disabled").pack(anchor="w", padx=20, pady=2)
+    ttkb.Label(behavior_frame, text="--- Other Planned Features ---", font=("Helvetica", 10, "italic")).pack(anchor="w", padx=10, pady=10)
+    ttkb.Checkbutton(behavior_frame, text="Show rule usage statistics (not yet implemented)", state="disabled").pack(anchor="w", padx=20, pady=2)
+    ttkb.Checkbutton(behavior_frame, text="Enable advanced logging for rules (not yet implemented)", state="disabled").pack(anchor="w", padx=20, pady=2)
+    # Save collapse_on_start setting on close
+    def on_close():
+        settings["collapse_on_start"] = collapse_on_start_var.get()
+        save_settings(settings)
+        settings_window.destroy()
+    settings_window.protocol("WM_DELETE_WINDOW", on_close)
+
+    # --- Logging Tab ---
+    logging_frame = ttkb.Frame(notebook)
+    notebook.add(logging_frame, text="Logging")
+    ttkb.Label(logging_frame, text="Logging Settings", font=("Helvetica", 14, "bold")).pack(pady=10)
+    loggers = ["UI", "File Operations", "Rules", "Settings", "geometry", "frames", "rule_ids"]
+    # Prepare settings for per-logger log levels
+    if "logging_levels" not in settings:
+        settings["logging_levels"] = {logger: settings.get("logging_level", "WARNING") for logger in loggers}
+    if "logging_components" not in settings:
+        settings["logging_components"] = {logger: 1 for logger in loggers}
+    logger_vars = {}
+    logger_level_vars = {}
+    for logger_name in loggers:
+        frame = ttkb.Frame(logging_frame)
+        frame.pack(fill="x", padx=10, pady=2)
+        var = tk.IntVar(value=settings["logging_components"].get(logger_name, 1))
+        logger_vars[logger_name] = var
+        cb = ttkb.Checkbutton(frame, text=logger_name, variable=var)
+        cb.pack(side="left")
+        level_var = tk.StringVar(value=settings["logging_levels"].get(logger_name, "WARNING"))
+        logger_level_vars[logger_name] = level_var
+        level_cb = ttkb.Combobox(frame, textvariable=level_var, values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], state="readonly", width=10)
+        level_cb.pack(side="left", padx=10)
+        Tooltip(cb, f"Enable logging for {logger_name} component.")
+        Tooltip(level_cb, f"Set log level for {logger_name}.")
+    def save_logging_settings():
+        for logger_name in loggers:
+            settings["logging_components"][logger_name] = logger_vars[logger_name].get()
+            settings["logging_levels"][logger_name] = logger_level_vars[logger_name].get()
+        save_settings(settings)
+    ttkb.Button(logging_frame, text="Save Logging Settings", command=save_logging_settings).pack(pady=10)
+
+    # --- Save/Cancel Buttons for all tabs ---
     def save_changes():
         settings["organisation_folder"] = organisation_folder_var.get()
         settings["theme"] = theme_var.get()
         settings["developer_mode"] = developer_mode_var.get()
-        settings["logging_level"] = logging_level_var.get()
-        settings["logging_components"] = {component: var.get() for component, var in component_vars.items()}
-        try:
-            ttkb.Style().theme_use(settings["theme"])
-        except Exception:
-            pass
+        # Save collapse_on_start if present
+        if 'collapse_on_start_var' in locals():
+            settings["collapse_on_start"] = collapse_on_start_var.get()
+        # Save logging settings from Logging tab
+        if 'logger_vars' in locals() and 'logger_level_vars' in locals():
+            for logger_name in logger_vars:
+                settings["logging_components"][logger_name] = logger_vars[logger_name].get()
+                settings["logging_levels"][logger_name] = logger_level_vars[logger_name].get()
         from taskmover.config import save_settings as save_settings_func
         import os
         settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
         save_settings_func(settings_path, settings, logger)
-        # Apply logging settings immediately
         from taskmover.logging_config import apply_logging_component_settings
         apply_logging_component_settings(settings)
         logger.info("Settings saved successfully.")
         settings_window.destroy()
     def close_window():
         settings_window.destroy()
-    button_frame = ttkb.Frame(general_frame)
-    button_frame.pack(fill="x", pady=10)
-    ttkb.Button(button_frame, text="Save", command=save_changes).pack(side="right", padx=10)
-    ttkb.Button(button_frame, text="Cancel", command=close_window).pack(side="right", padx=10)
-    # Add a button to open the Theme Manager window in the settings UI
-    #ttkb.Button(general_frame, text="Open Theme Manager", style="info.TButton", command=lambda: open_theme_manager_window(root, ttkb.Style(), logger)).pack(anchor="w", padx=10, pady=10)
+    # Add Save/Cancel buttons to all tabs
+    for frame in [general_frame, logging_frame, behavior_frame]:
+        button_frame = ttkb.Frame(frame)
+        button_frame.pack(fill="x", pady=10)
+        ttkb.Button(button_frame, text="Save", command=save_changes).pack(side="right", padx=10)
+        ttkb.Button(button_frame, text="Cancel", command=close_window).pack(side="right", padx=10)
 
 def open_theme_manager_window(
     root: tk.Tk,

@@ -32,19 +32,17 @@ def configure_logger(name="TaskMover", developer_mode=False):
 
 def apply_logging_component_settings(settings):
     """
-    Enable or disable logging for each component based on settings['logging_components'] and filter by global log level.
+    Enable or disable logging for each component based on settings['logging_components'] and filter by per-logger log level.
     """
     import logging
-    global_level = getattr(logging, settings.get("logging_level", "INFO"))
-    component_loggers = {
-        "UI": logging.getLogger("UI"),
-        "File Operations": logging.getLogger("File Operations"),
-        "Rules": logging.getLogger("Rules"),
-        "Settings": logging.getLogger("Settings"),
-    }
-    for component, logger in component_loggers.items():
-        enabled = settings.get("logging_components", {}).get(component, 0)
+    loggers = ["UI", "File Operations", "Rules", "Settings", "geometry", "frames", "rule_ids"]
+    levels = settings.get("logging_levels", {})
+    for logger_name in loggers:
+        logger = logging.getLogger(logger_name)
+        enabled = settings.get("logging_components", {}).get(logger_name, 1)
+        level_name = levels.get(logger_name, settings.get("logging_level", "WARNING"))
+        level = getattr(logging, level_name, logging.WARNING)
         if enabled:
-            logger.setLevel(global_level)
+            logger.setLevel(level)
         else:
             logger.setLevel(logging.CRITICAL + 1)
