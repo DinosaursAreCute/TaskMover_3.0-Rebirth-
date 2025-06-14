@@ -174,15 +174,30 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     rule_frame.bind("<Enter>", _bind_mousewheel)
     rule_frame.bind("<Leave>", _unbind_mousewheel)
 
-    update_rule_list(rule_frame, rules, config_directory, logger)
+    def update_rule_list_preserve_scroll(rules, config_path, logger):
+        try:
+            yview = canvas.yview()
+        except Exception:
+            yview = (0, 0)
+        update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_preserve_scroll)
+        # Delay restoring scroll position to allow layout to settle
+        def restore_scroll():
+            try:
+                canvas.yview_moveto(yview[0])
+            except Exception:
+                pass
+        canvas.after(30, restore_scroll)
 
-    # Buttons for rule operations with custom color coding
+    # Use the wrapper for initial population
+    update_rule_list_preserve_scroll(rules, config_directory, logger)
+
+    # Update all button callbacks to use the scroll-preserving function
     button_frame = ttkb.Frame(root, padding=10)
     button_frame.pack(fill="x", padx=10, pady=5, before=rule_frame_container)
-    ttkb.Button(button_frame, text="Enable All Rules", style="success.TButton", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Disable All Rules", style="danger.TButton", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: add_rule_button(rules, config_directory, rule_frame, logger, root)).pack(side="left", padx=5)
-    ttkb.Button(button_frame, text="Delete Multiple Rules", style="Warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Enable All Rules", style="success.TButton", command=lambda: enable_all_rules(rules, config_directory, rule_frame, logger, update_rule_list_preserve_scroll)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Disable All Rules", style="danger.TButton", command=lambda: disable_all_rules(rules, config_directory, rule_frame, logger, update_rule_list_preserve_scroll)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Add Rule", style="primary.TButton", command=lambda: add_rule_button(rules, config_directory, rule_frame, logger, root, update_rule_list_preserve_scroll)).pack(side="left", padx=5)
+    ttkb.Button(button_frame, text="Delete Multiple Rules", style="Warning.TButton", command=lambda: delete_multiple_rules(rules, config_directory, logger, rule_frame, update_rule_list_preserve_scroll)).pack(side="left", padx=5)
     
     def show_organization_progress():
         # Close any existing progress window before opening a new one
