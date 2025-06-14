@@ -8,7 +8,7 @@ from tkinter import messagebox, filedialog, simpledialog
 from taskmover.config import save_rules
 from taskmover.pattern_grid_helpers import pattern_grid_label, pattern_grid_edit
 
-def update_rule_list(rule_frame, rules, config_path, logger):
+def update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_fn=None):
     """
     Populate the main rule list UI in the provided frame. Handles dynamic pattern editing,
     including inline editing, dynamic add fields, and a plus (+) button for adding multiple patterns.
@@ -18,6 +18,7 @@ def update_rule_list(rule_frame, rules, config_path, logger):
         rules: The rules dictionary.
         config_path: Path to the config file.
         logger: Logger instance for logging events.
+        update_rule_list_fn: Optional function to call for scroll-preserving updates (default: None)
     """
     for widget in rule_frame.winfo_children():
         widget.destroy()
@@ -52,7 +53,10 @@ def update_rule_list(rule_frame, rules, config_path, logger):
                 rules[rk]['path'] = selected
                 save_rules(config_path, rules)
                 logger.info(f"Path for rule '{rk}' updated: {selected}")
-                update_rule_list(rule_frame, rules, config_path, logger)
+                if update_rule_list_fn:
+                    update_rule_list_fn(rules, config_path, logger)
+                else:
+                    update_rule_list(rule_frame, rules, config_path, logger)
         path_entry = ttkb.Entry(frame, textvariable=path_var, font=("Helvetica", 10), width=40)
         path_entry.pack(anchor="w", padx=10)
         path_entry.bind("<Button-1>", lambda event, rk=rule_key, pv=path_var: choose_path(event, rk, pv))
@@ -114,25 +118,31 @@ def toggle_unzip(rule_key, rules, config_path, unzip, logger):
     logging.getLogger("UI").info(f"User toggled unzip for rule '{rule_key}' to {bool(unzip)}.")
     logging.getLogger("Rules").info(f"Rule '{rule_key}' unzip state set to {bool(unzip)}.")
 
-def enable_all_rules(rules, config_path, rule_frame, logger):
+def enable_all_rules(rules, config_path, rule_frame, logger, update_rule_list_fn=None):
     import logging
     for rule_key, rule in rules.items():
         rule['active'] = True
         logging.getLogger("UI").info(f"User enabled rule '{rule_key}'.")
         logging.getLogger("Rules").info(f"Rule '{rule_key}' enabled.")
     save_rules(config_path, rules)
-    update_rule_list(rule_frame, rules, config_path, logger)
+    if update_rule_list_fn:
+        update_rule_list_fn(rules, config_path, logger)
+    else:
+        update_rule_list(rule_frame, rules, config_path, logger)
 
-def disable_all_rules(rules, config_path, rule_frame, logger):
+def disable_all_rules(rules, config_path, rule_frame, logger, update_rule_list_fn=None):
     import logging
     for rule_key, rule in rules.items():
         rule['active'] = False
         logging.getLogger("UI").info(f"User disabled rule '{rule_key}'.")
         logging.getLogger("Rules").info(f"Rule '{rule_key}' disabled.")
     save_rules(config_path, rules)
-    update_rule_list(rule_frame, rules, config_path, logger)
+    if update_rule_list_fn:
+        update_rule_list_fn(rules, config_path, logger)
+    else:
+        update_rule_list(rule_frame, rules, config_path, logger)
 
-def add_rule_button(rules, config_path, rule_frame, logger, root):
+def add_rule_button(rules, config_path, rule_frame, logger, root, update_rule_list_fn=None):
     rule_name = simpledialog.askstring("Add Rule", "Enter the name of the new rule:", parent=root)
     if rule_name:
         if rule_name in rules:
@@ -141,18 +151,24 @@ def add_rule_button(rules, config_path, rule_frame, logger, root):
         else:
             rules[rule_name] = {"patterns": [], "path": "", "unzip": False, "active": True}
             save_rules(config_path, rules)
-            update_rule_list(rule_frame, rules, config_path, logger)
+            if update_rule_list_fn:
+                update_rule_list_fn(rules, config_path, logger)
+            else:
+                update_rule_list(rule_frame, rules, config_path, logger)
             logger.info(f"Added new rule: {rule_name}")
             edit_rule(rule_name, rules, config_path, logger, rule_frame)
 
-def delete_rule(rule_key, rules, config_path, logger, rule_frame):
+def delete_rule(rule_key, rules, config_path, logger, rule_frame, update_rule_list_fn=None):
     if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the rule '{rule_key}'?"):
         del rules[rule_key]
         save_rules(config_path, rules)
         logger.info(f"Rule '{rule_key}' deleted.")
-        update_rule_list(rule_frame, rules, config_path, logger)
+        if update_rule_list_fn:
+            update_rule_list_fn(rules, config_path, logger)
+        else:
+            update_rule_list(rule_frame, rules, config_path, logger)
 
-def delete_multiple_rules(rules, config_path, logger, rule_frame):
+def delete_multiple_rules(rules, config_path, logger, rule_frame, update_rule_list_fn=None):
     import taskmover.center_window as cw
     delete_window = tk.Toplevel()
     delete_window.title("Delete Rules")
@@ -171,7 +187,10 @@ def delete_multiple_rules(rules, config_path, logger, rule_frame):
                 del rules[rule_key]
                 logger.info(f"Rule '{rule_key}' deleted.")
             save_rules(config_path, rules)
-            update_rule_list(rule_frame, rules, config_path, logger)
+            if update_rule_list_fn:
+                update_rule_list_fn(rules, config_path, logger)
+            else:
+                update_rule_list(rule_frame, rules, config_path, logger)
             delete_window.destroy()
     ttkb.Button(delete_window, text="Delete Selected", command=confirm_delete).pack(pady=10)
     ttkb.Button(delete_window, text="Cancel", command=delete_window.destroy).pack(pady=5)
