@@ -22,6 +22,7 @@
 - Fixed geometry manager conflicts and duplicate function declarations in pattern editing logic.
 - Fixed issues with pattern field focus and placeholder handling.
 - Fixed issue where widgets would not use the full width
+
 ---
 
 ## [2.1.0] - 2025-05-17
