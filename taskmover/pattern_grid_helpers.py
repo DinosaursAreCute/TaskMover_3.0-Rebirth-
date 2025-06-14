@@ -6,8 +6,9 @@ import tkinter as tk
 import ttkbootstrap as ttkb
 from taskmover.config import save_rules
 from typing import Any, Dict, Optional
+from .ui_helpers import Tooltip
 
-def pattern_grid_label(patterns_grid, rules, rule_key, show_pattern_edit):
+def pattern_grid_label(patterns_grid, rules, rule_key, show_pattern_edit, scrollable_widget=None):
     """
     Display patterns as labels in a responsive grid. Clicking a label switches to edit mode.
     Debounced and only redraws if layout actually changes. Reuses widgets for performance.
@@ -44,6 +45,8 @@ def pattern_grid_label(patterns_grid, rules, rule_key, show_pattern_edit):
                 label.config(text=pattern)
                 label.grid(row=row, column=col, padx=2, pady=2, sticky="w")
                 label.bind("<Button-1>", lambda event, rk=rule_key: show_pattern_edit())
+                # Add tooltip only in label (non-edit) mode
+                Tooltip(label, "File name pattern. Click to edit.")
         else:
             label = widget_cache[0]
             label.config(text="<no patterns>")
@@ -59,9 +62,11 @@ def pattern_grid_label(patterns_grid, rules, rule_key, show_pattern_edit):
     for widget in patterns_grid.winfo_children():
         widget.grid_remove()
     do_layout_patterns()
+    # Attach scrollable_widget to patterns_grid for later focus restoration
+    patterns_grid._scrollable_widget = scrollable_widget
 
 
-def pattern_grid_edit(patterns_grid, rules, rule_key, config_path, logger, show_pattern_label):
+def pattern_grid_edit(patterns_grid, rules, rule_key, config_path, logger, show_pattern_label, scrollable_widget=None):
     """
     Display patterns as editable entries in a responsive grid. Handles add, save, discard, and plus button.
     Debounced and only redraws if layout actually changes. Reuses widgets for performance.
@@ -106,10 +111,27 @@ def pattern_grid_edit(patterns_grid, rules, rule_key, config_path, logger, show_
             show_pattern_label()
             # Rebind <Configure> for label mode
             patterns_grid.bind("<Configure>", lambda e: pattern_grid_label(patterns_grid, rules, rule_key, show_pattern_label))
+            # Restore focus to scrollable widget for scrolling
+            sw = getattr(patterns_grid, '_scrollable_widget', None)
+            if sw:
+                sw.focus_set()
+                # Optionally, rebind mouse wheel events if needed
+                if hasattr(sw, 'bind_all'):
+                    sw.bind_all('<MouseWheel>', lambda e: sw.event_generate('<MouseWheel>', delta=e.delta))
+            else:
+                patterns_grid.focus_set()
         def discard_patterns(event=None):
             show_pattern_label()
             # Rebind <Configure> for label mode
             patterns_grid.bind("<Configure>", lambda e: pattern_grid_label(patterns_grid, rules, rule_key, show_pattern_label))
+            # Restore focus to scrollable widget for scrolling
+            sw = getattr(patterns_grid, '_scrollable_widget', None)
+            if sw:
+                sw.focus_set()
+                if hasattr(sw, 'bind_all'):
+                    sw.bind_all('<MouseWheel>', lambda e: sw.event_generate('<MouseWheel>', delta=e.delta))
+            else:
+                patterns_grid.focus_set()
         # Existing patterns
         for idx, pattern in enumerate(pattern_strs):
             row = idx // max_per_row

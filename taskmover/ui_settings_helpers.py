@@ -9,6 +9,7 @@ from taskmover.config import save_rules
 from .ui_color_helpers import choose_color_and_update, browse_path_and_update
 from .ui_developer_helpers import trigger_developer_function
 from .theme_manager import save_theme, load_all_themes, apply_theme, delete_theme, get_theme
+from .ui_helpers import Tooltip
 
 # Settings window and theme helpers
 
@@ -28,9 +29,10 @@ def open_settings_window(
         logger: Logger instance for logging events.
     """
     settings_window = tk.Toplevel(root)
-    settings_window.attributes('-topmost', True)
     settings_window.title("Settings")
     settings_window.geometry("600x700")  # Adjusted window size
+    settings_window.lift()
+    settings_window.focus_force()
 
     notebook = ttk.Notebook(settings_window)
     notebook.pack(fill="both", expand=True)
@@ -43,8 +45,12 @@ def open_settings_window(
     organisation_folder_var = tk.StringVar(value=settings.get("organisation_folder", ""))
     organisation_folder_frame = ttkb.Frame(general_frame)
     organisation_folder_frame.pack(fill="x", padx=10, pady=5)
-    ttkb.Entry(organisation_folder_frame, textvariable=organisation_folder_var, width=40).pack(side="left", padx=5)
-    ttkb.Button(organisation_folder_frame, text="Browse", command=lambda: browse_path_and_update(organisation_folder_var, logger)).pack(side="left", padx=5)
+    org_entry = ttkb.Entry(organisation_folder_frame, textvariable=organisation_folder_var, width=40)
+    org_entry.pack(side="left", padx=5)
+    Tooltip(org_entry, "Path to the folder that will be organized.")
+    browse_btn = ttkb.Button(organisation_folder_frame, text="Browse", command=lambda: browse_path_and_update(organisation_folder_var, logger))
+    browse_btn.pack(side="left", padx=5)
+    Tooltip(browse_btn, "Browse for a folder to organize.")
     ttkb.Label(general_frame, text="Theme:").pack(anchor="w", padx=10, pady=5)
     theme_var = tk.StringVar(value=settings.get("theme", "flatly"))
     valid_themes = ttkb.Style().theme_names()
@@ -77,20 +83,27 @@ def open_settings_window(
         state="readonly"
     )
     theme_combobox.pack(fill="x", padx=10, pady=5)
+    Tooltip(theme_combobox, "Select a theme for the application.")
     theme_combobox.bind("<<ComboboxSelected>>", preview_theme)
     ttkb.Label(general_frame, text="Developer Mode:").pack(anchor="w", padx=10, pady=5)
     developer_mode_var = tk.BooleanVar(value=settings.get("developer_mode", False))
-    ttkb.Checkbutton(general_frame, text="Enable Developer Mode", variable=developer_mode_var).pack(anchor="w", padx=10, pady=5)
+    dev_mode_cb = ttkb.Checkbutton(general_frame, text="Enable Developer Mode", variable=developer_mode_var)
+    dev_mode_cb.pack(anchor="w", padx=10, pady=5)
+    Tooltip(dev_mode_cb, "Enable advanced developer features.")
     ttkb.Label(general_frame, text="Logging Level:").pack(anchor="w", padx=10, pady=5)
     logging_level_var = tk.StringVar(value=settings.get("logging_level", "INFO"))
-    ttkb.Combobox(general_frame, textvariable=logging_level_var, values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], state="readonly").pack(fill="x", padx=10, pady=5)
+    log_level_cb = ttkb.Combobox(general_frame, textvariable=logging_level_var, values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], state="readonly")
+    log_level_cb.pack(fill="x", padx=10, pady=5)
+    Tooltip(log_level_cb, "Set the logging level for the application.")
     ttkb.Label(general_frame, text="Logging Components:", font=("Helvetica", 10, "bold")).pack(anchor="w", padx=10, pady=5)
     components_frame = ttkb.Frame(general_frame)
     components_frame.pack(fill="x", padx=10, pady=5)
     components = ["UI", "File Operations", "Rules", "Settings"]
     component_vars = {component: tk.IntVar(value=settings.get("logging_components", {}).get(component, 0)) for component in components}
     for component, var in component_vars.items():
-        ttkb.Checkbutton(components_frame, text=component, variable=var).pack(anchor="w")
+        cb = ttkb.Checkbutton(components_frame, text=component, variable=var)
+        cb.pack(anchor="w")
+        Tooltip(cb, f"Enable logging for {component} component.")
     ttkb.Button(general_frame, text="Create Dummy Files", command=lambda: trigger_developer_function(organisation_folder_var.get(), logger)).pack(anchor="w", padx=10, pady=10)
 
     # --- Theme Manager Tab ---

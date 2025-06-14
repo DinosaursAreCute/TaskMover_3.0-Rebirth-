@@ -30,6 +30,7 @@ def organize_files(settings: dict, rules: dict, logger: logging.Logger, organisa
     org_path = Path(organisation_folder)
     if not organisation_folder or not org_path.exists():
         logger.error(f"Directory '{organisation_folder}' does not exist.")
+        messagebox.showerror("Directory Not Found", f"The folder '{organisation_folder}' does not exist. Please check your settings.")
         return
 
     # Get the list of files and total files
@@ -58,7 +59,8 @@ def move_file(file_path: Path, organization_folder: Path, rules: dict, logger: l
             target_folder = Path(rule['path']) if rule['path'] else organization_folder / folder
             if not target_folder.exists():
                 logger.error(f"Target folder '{target_folder}' does not exist for rule '{folder}'.")
-                raise FileNotFoundError(f"Target folder '{target_folder}' does not exist for rule '{folder}'.")
+                messagebox.showerror("Target Folder Not Found", f"The target folder '{target_folder}' for rule '{folder}' does not exist. Please update your rule or create the folder.")
+                return None
             shutil.move(str(file_path), str(target_folder / file_name))
             logger.info(f"Moved file '{file_name}' to '{target_folder}'")
             # Unzip if rule requests and file is a zip
@@ -71,6 +73,7 @@ def move_file(file_path: Path, organization_folder: Path, rules: dict, logger: l
                 file_moved_callback(file_name, str(target_folder))
             return str(target_folder)
     logger.warning(f"No matching rule found for file '{file_name}'")
+    messagebox.showwarning("No Rule Match", f"No matching rule was found for file '{file_name}'. The file was not moved.")
     return None
 
 def unzip_file(zip_path: Path, extract_to: Path, logger: logging.Logger) -> None:
@@ -108,6 +111,7 @@ def start_organization(settings: dict, rules: dict, logger: logging.Logger, prog
     org_path = Path(organisation_folder)
     if not organisation_folder or not org_path.exists():
         logger.error(f"Directory '{organisation_folder}' does not exist.")
+        messagebox.showerror("Directory Not Found", f"The folder '{organisation_folder}' does not exist. Please check your settings.")
         return
     files = [item for item in org_path.iterdir() if item.is_file()]
     total_files = len(files)

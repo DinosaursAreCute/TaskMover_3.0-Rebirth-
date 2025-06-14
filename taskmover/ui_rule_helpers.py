@@ -3,12 +3,13 @@ Rule management UI helpers for TaskMover.
 """
 
 import tkinter as tk
+from .ui_helpers import Tooltip
 import ttkbootstrap as ttkb
 from tkinter import messagebox, filedialog, simpledialog
 from taskmover.config import save_rules
 from taskmover.pattern_grid_helpers import pattern_grid_label, pattern_grid_edit
 
-def update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_fn=None):
+def update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_fn=None, scrollable_widget=None):
     """
     Populate the main rule list UI in the provided frame. Handles dynamic pattern editing,
     including inline editing, dynamic add fields, and a plus (+) button for adding multiple patterns.
@@ -30,17 +31,19 @@ def update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_fn
         # --- Patterns: label by default, editable on click, dynamic grid layout ---
         patterns_frame = ttkb.Frame(frame)
         patterns_frame.pack(anchor="w", padx=10, pady=2, fill="x")
-        ttkb.Label(patterns_frame, text="Patterns:", font=("Helvetica", 10)).pack(anchor="w")
+        patterns_label = ttkb.Label(patterns_frame, text="Patterns:", font=("Helvetica", 10))
+        patterns_label.pack(anchor="w")
+        Tooltip(patterns_label, "File name patterns (e.g., *.pdf, report_*.docx) that this rule will match.")
         patterns_grid = ttkb.Frame(patterns_frame)
         patterns_grid.pack(anchor="w", fill="x")
         # Fix: pass patterns_grid as argument to closure to bind the correct instance
         def make_show_pattern_label(rk, pg):
             def show_pattern_label():
-                pattern_grid_label(pg, rules, rk, make_show_pattern_edit(rk, pg))
+                pattern_grid_label(pg, rules, rk, make_show_pattern_edit(rk, pg), scrollable_widget)
             return show_pattern_label
         def make_show_pattern_edit(rk, pg):
             def show_pattern_edit():
-                pattern_grid_edit(pg, rules, rk, config_path, logger, make_show_pattern_label(rk, pg))
+                pattern_grid_edit(pg, rules, rk, config_path, logger, make_show_pattern_label(rk, pg), scrollable_widget)
             return show_pattern_edit
         make_show_pattern_label(rule_key, patterns_grid)()  # Call the label function for this rule and grid
 
@@ -62,6 +65,7 @@ def update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_fn
         path_entry.bind("<Button-1>", lambda event, rk=rule_key, pv=path_var: choose_path(event, rk, pv))
         path_entry.bind("<Return>", lambda event, rk=rule_key, pv=path_var: choose_path(event, rk, pv))
         path_entry.config(state="readonly", cursor="hand2")
+        Tooltip(path_entry, "Click to select the folder where files matching this rule will be moved.")
 
         # --- Rule details switches ---
         details_frame = ttkb.Frame(frame)
@@ -74,6 +78,7 @@ def update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_fn
             command=lambda rk=rule_key, av=active_var: toggle_rule_active(rk, rules, config_path, av.get(), logger)
         )
         active_switch.pack(side="left", padx=10)
+        Tooltip(active_switch, "Enable or disable this rule.")
         unzip_var = tk.IntVar(value=1 if rule.get('unzip', False) else 0)
         unzip_switch = ttkb.Checkbutton(
             details_frame,
@@ -82,14 +87,17 @@ def update_rule_list(rule_frame, rules, config_path, logger, update_rule_list_fn
             command=lambda rk=rule_key, uv=unzip_var: toggle_unzip(rk, rules, config_path, uv.get(), logger)
         )
         unzip_switch.pack(side="left", padx=10)
+        Tooltip(unzip_switch, "Automatically unzip .zip files matching this rule.")
 
         # --- Action buttons ---
         actions_frame = ttkb.Frame(frame)
         actions_frame.pack(fill="x", pady=5)
         edit_button = ttkb.Button(actions_frame, text="Edit", style="info.TButton", command=lambda rk=rule_key: edit_rule(rk, rules, config_path, logger, rule_frame))
         edit_button.pack(side="left", padx=10)
+        Tooltip(edit_button, "Edit this rule.")
         delete_button = ttkb.Button(actions_frame, text="Delete", style="danger.TButton", command=lambda rk=rule_key: delete_rule(rk, rules, config_path, logger, rule_frame))
         delete_button.pack(side="left", padx=10)
+        Tooltip(delete_button, "Delete this rule.")
 
 def open_file_dialog(initial_dir):
     from pathlib import Path
