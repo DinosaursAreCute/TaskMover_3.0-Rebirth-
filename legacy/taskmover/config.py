@@ -9,6 +9,13 @@ import os
 import yaml
 import logging
 from ttkbootstrap import Style
+import uuid
+
+# Define loggers at the top for consistency
+settings_logger = logging.getLogger("Settings")
+ui_logger = logging.getLogger("UI")
+file_ops_logger = logging.getLogger("File Operations")
+rules_logger = logging.getLogger("Rules")
 
 def load_rules(config_path, fallback_path):
     """Load rules from a configuration file or fallback to a backup, auto-fixing broken YAML and missing parameters. If all else fails, ask the user before restoring defaults."""
@@ -34,6 +41,14 @@ def load_rules(config_path, fallback_path):
                 if k not in rule:
                     rule[k] = v
                     changed = True
+            # Assign UUID if missing
+            if 'id' not in rule:
+                rule['id'] = str(uuid.uuid4())
+                changed = True
+            # Assign priority if missing
+            if 'priority' not in rule:
+                rule['priority'] = 0
+                changed = True
         return changed
     # Try loading, cleaning, and fixing
     for attempt in range(2):
@@ -172,6 +187,7 @@ def save_rules(config_path, rules):
             yaml.dump(rules, file, default_flow_style=False)
     except Exception as e:
         raise RuntimeError(f"Failed to save rules: {e}")
+    
 
 def load_settings(settings_path):
     """Load settings from the settings file with strict validation and error handling."""
@@ -192,7 +208,7 @@ def load_settings(settings_path):
                 "Settings": 1
             }
         }
-        logging.getLogger("Settings").info(f"Loaded default settings: {default_settings}")
+        settings_logger.info(f"Loaded default settings: {default_settings}")
         return default_settings
     try:
         with open(settings_path, "r") as file:
@@ -204,7 +220,7 @@ def load_settings(settings_path):
         ]
         if not isinstance(data, dict) or not all(k in data for k in required_keys):
             raise ValueError("Settings file is not a valid TaskMover settings dictionary.")
-        logging.getLogger("Settings").info(f"Settings loaded from {settings_path}: {data}")
+        settings_logger.info(f"Settings loaded from {settings_path}: {data}")
         return data
     except FileNotFoundError:
         raise FileNotFoundError(f"Settings file not found: {settings_path}")
@@ -219,11 +235,11 @@ def save_settings(settings_path, settings, logger=None):
         os.makedirs(os.path.dirname(settings_path), exist_ok=True)
         with open(settings_path, "w") as file:
             yaml.dump(settings, file)
-        logging.getLogger("Settings").info(f"Settings saved successfully to {settings_path}.")
+        settings_logger.info(f"Settings saved successfully to {settings_path}.")
         if logger:
             logger.info(f"Settings saved successfully to {settings_path}.")
     except Exception as e:
-        logging.getLogger("Settings").error(f"Failed to save settings: {e}")
+        settings_logger.error(f"Failed to save settings: {e}")
         if logger:
             logger.error(f"Failed to save settings: {e}")
         raise RuntimeError(f"Failed to save settings: {e}")
@@ -234,19 +250,17 @@ def apply_settings(root, settings, logger):
     try:
         style.theme_use(settings.get("theme", "flatly"))
     except Exception as e:
-        logging.getLogger("UI").error(f"Failed to apply theme: {e}")
+        ui_logger.error(f"Failed to apply theme: {e}")
         logger.error(f"Failed to apply theme: {e}")
 
    # root.configure(bg=settings.get("background_color", "#FFFFFF"))
-    logger.setLevel(settings.get("logging_level", "INFO"))
-
-    # Apply logging component levels
+    logger.setLevel(settings.get("logging_level", "INFO"))    # Apply logging component levels
     apply_logging_component_settings(settings)
     for component, enabled in settings.get("logging_components", {}).items():
         if enabled:
-            logging.getLogger("Settings").info(f"Logging enabled for {component}")
+            settings_logger.info(f"Logging enabled for {component}")
         else:
-            logging.getLogger("Settings").info(f"Logging disabled for {component}")
+            settings_logger.info(f"Logging disabled for {component}")
 
 def apply_logging_component_settings(settings):
     """
@@ -254,10 +268,10 @@ def apply_logging_component_settings(settings):
     """
     import logging
     component_loggers = {
-        "UI": logging.getLogger("UI"),
-        "File Operations": logging.getLogger("File Operations"),
-        "Rules": logging.getLogger("Rules"),
-        "Settings": logging.getLogger("Settings"),
+        "UI": ui_logger,
+        "File Operations": file_ops_logger,
+        "Rules": rules_logger,
+        "Settings": settings_logger,
     }
     for component, logger in component_loggers.items():
         enabled = settings.get("logging_components", {}).get(component, 0)

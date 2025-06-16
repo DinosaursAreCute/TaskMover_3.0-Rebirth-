@@ -5,6 +5,9 @@ import tkinter
 from tkinter import messagebox
 from pathlib import Path
 
+# Define loggers at the top for consistency
+file_ops_logger = logging.getLogger("File Operations")
+
 # Modularized UI helpers are now imported from their respective files.
 from .ui_menu_helpers import add_menubar
 from .ui_rule_helpers import (
@@ -33,11 +36,11 @@ def ensure_directory_exists(directory: str | Path, logger: 'logging.Logger | Non
         Path(directory).mkdir(parents=True, exist_ok=True)
         if logger is not None:
             logger.debug(f"Ensured directory exists: {directory}")
-        logging.getLogger("File Operations").debug(f"Ensured directory exists: {directory}")
+        file_ops_logger.debug(f"Ensured directory exists: {directory}")
     except Exception as e:
         if logger is not None:
             logger.error(f"Failed to create directory '{directory}': {e}")
-        logging.getLogger("File Operations").error(f"Failed to create directory '{directory}': {e}")
+        file_ops_logger.error(f"Failed to create directory '{directory}': {e}")
         raise
 
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
