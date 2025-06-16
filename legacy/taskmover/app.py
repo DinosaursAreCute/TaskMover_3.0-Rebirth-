@@ -42,6 +42,10 @@ from .ui_button_helpers import (
 from .ui_license_helpers import show_license_info
 from .debug_config import enable_debug_lines, enable_widget_highlighter, draw_debug_lines, display_widget_names
 
+# Define loggers at the top of the file for consistency
+geometry_logger = logging.getLogger("geometry")
+frames_logger = logging.getLogger("frames")
+
 settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
 
 class TextHandler(logging.Handler):
@@ -83,14 +87,12 @@ def main(rules, logger):
     """Main entry point for the application."""
     # Ensure logging is configured for all components
     from .logging_config import configure_logger
-    logger = configure_logger(developer_mode=True)  # Or use settings.get("developer_mode", False) if available
+    logger = configure_logger("TaskMover", developer_mode=True)  # Or use settings.get("developer_mode", False) if available
 
     settings = load_settings(logger)
     logger.debug(f"Loaded settings: {settings}")
 
-    # Reconfigure logger based on developer mode
-    developer_mode = settings.get("developer_mode", False)
-    logger = configure_logger(developer_mode=developer_mode)
+    
 
     root = tk.Tk()
     root.withdraw()
@@ -144,7 +146,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     rule_frame_container.pack(fill="both", expand=True, padx=10, pady=10)
     canvas = tk.Canvas(rule_frame_container, borderwidth=0, highlightthickness=0)
     scrollbar = ttkb.Scrollbar(rule_frame_container, orient="vertical", command=canvas.yview)
-    geometry_logger = logging.getLogger("geometry")
+    geometry_logger.debug("Initializing frame and canvas setup.")
 
     # --- Event Handlers (must be defined before create_rule_frame) ---
     def on_frame_configure(event=None):
@@ -186,7 +188,14 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
 
     # Use a container to hold mutable references
     rule_refs: dict[str, Any] = {"rule_frame": None, "rule_window_id": None}
+    
     def create_rule_frame():
+        """
+        Create a new rule frame inside the canvas, ensuring it has proper dimensions
+        and event bindings. This is a critical function that ensures the canvas
+        scrolling works correctly.
+        """
+        geometry_logger.info("Creating new rule frame")
         # Destroy old frame and window if present
         if rule_refs["rule_window_id"] is not None:
             try:
@@ -198,52 +207,230 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
                 rule_refs["rule_frame"].destroy()
             except Exception:
                 pass
-        rule_frame = ttkb.Frame(canvas, padding=10)
-        rule_window_id = canvas.create_window((0, 0), window=rule_frame, anchor="nw")
+        
+        # Create a new frame with known dimensions to ensure proper scrolling
+        canvas_width = canvas.winfo_width() or 800  # Use a fallback width if not yet mapped
+        rule_frame = ttkb.Frame(canvas, padding=10, width=canvas_width-20)
+        # Force the frame to maintain its size
+        rule_frame.pack_propagate(False)
+        rule_frame.grid_propagate(False)
+        
+        # Explicitly set minimum size to ensure proper scrolling
+        rule_frame.config(width=canvas_width-20)
+        rule_frame.update_idletasks()
+        
+        # Create the window item with the frame
+        rule_window_id = canvas.create_window((0, 0), window=rule_frame, anchor="nw", width=canvas_width-20)
+        
+        # Store references
         rule_refs["rule_frame"] = rule_frame
         rule_refs["rule_window_id"] = rule_window_id
+        
         # Bind events to the new frame
         rule_frame.bind("<Configure>", on_frame_configure)
         rule_frame.bind("<Enter>", _bind_mousewheel)
         rule_frame.bind("<Leave>", _unbind_mousewheel)
-        return rule_frame, rule_window_id
-    # Initial creation
+        
+        # Set initial scrollregion
+        canvas.configure(scrollregion=(0, 0, canvas_width, 500))
+        
+        frames_logger.debug(f"Created rule_frame: {rule_frame}, rule_window_id: {rule_window_id}")
+        
+        return rule_frame, rule_window_id    # Initial creation
     rule_frame, rule_window_id = create_rule_frame()
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
-    
     def update_canvas_scrollregion():
+        """
+        Update the canvas scrollregion based on its content.
+        This function uses multiple approaches to determine the correct scrollregion:
+        1. First, check if the rule frame window exists in the canvas
+        2. Use the frame's required height and the canvas width to set scrollregion
+        3. If the frame height can't be determined, calculate based on content
+        4. If all else fails, use fallback dimensions
+        
+        The function includes aggressive self-healing for broken scrollregions
+        and extensive logging to help diagnose scroll issues.
+        """
         try:
+            # Start with validity check on canvas
+            if not canvas.winfo_exists():
+                geometry_logger.error("Canvas no longer exists!")
+                return
+                
+            # Check for window items
             window_ids = canvas.find_all()
+            current_scrollregion = canvas.cget("scrollregion")
+            geometry_logger.debug(f"Canvas contains {len(window_ids)} items, current scrollregion: {current_scrollregion}")
             geometry_logger.debug(f"Checking rule_window_id {rule_refs['rule_window_id']} in canvas.find_all(): {window_ids}")
+            
+            # Self-healing: if window ID is missing, rebuild everything
             if rule_refs["rule_window_id"] not in window_ids:
                 geometry_logger.warning(f"rule_window_id {rule_refs['rule_window_id']} missing from canvas. Self-healing: rebuilding rule_frame and window item.")
                 create_rule_frame()
                 update_rule_list_preserve_scroll(rules, config_directory, logger)
                 canvas.after_idle(update_canvas_scrollregion)
                 return
-            log_height = 0
-            if settings.get("developer_mode", False):
-                for child in root.winfo_children():
-                    if str(child).endswith("log_frame") or getattr(child, 'winfo_name', lambda: None)() == 'log_frame':
-                        log_height = child.winfo_height()
-                        break
-            canvas.update_idletasks()
-            bbox = list(canvas.bbox("all")) if canvas.bbox("all") else [0, 0, 0, 0]
-            if len(bbox) < 4:
-                bbox = [0, 0, 0, 0]
-            if log_height:
-                bbox[3] = max(0, bbox[3] - log_height)
-            geometry_logger.debug(f"update_canvas_scrollregion: bbox={bbox}, log_height={log_height}")
-            if not canvas.winfo_ismapped():
-                geometry_logger.debug(f"Canvas {canvas} is not mapped - skipping scrollregion update.")
+            
+            # Get frame dimensions
+            rule_frame = rule_refs["rule_frame"]
+            if not rule_frame:
+                geometry_logger.warning("No rule_frame reference found")
+                # Self-healing: attempt to recreate the frame
+                create_rule_frame()
+                update_rule_list_preserve_scroll(rules, config_directory, logger)
+                canvas.after_idle(update_canvas_scrollregion)
                 return
-            canvas.configure(scrollregion=(bbox[0], bbox[1], bbox[2], bbox[3]))
+                
+            # Check if frame is still valid
+            if not rule_frame.winfo_exists():
+                geometry_logger.warning("rule_frame no longer exists!")
+                # Self-healing: recreate the frame
+                create_rule_frame()
+                update_rule_list_preserve_scroll(rules, config_directory, logger)
+                canvas.after_idle(update_canvas_scrollregion)
+                return
+                
+            # Make sure we have updated dimensions
+            try:
+                canvas.update_idletasks()
+                rule_frame.update_idletasks()
+            except Exception as e:
+                geometry_logger.error(f"Error during update_idletasks: {e}")
+            
+            # Get canvas dimensions with sanity checks
+            canvas_width = canvas.winfo_width()
+            canvas_height = canvas.winfo_height()
+            
+            if canvas_width <= 0 or canvas_height <= 0:
+                geometry_logger.warning(f"Invalid canvas dimensions: {canvas_width}x{canvas_height}, using fallbacks")
+                canvas_width = canvas_width or 800
+                canvas_height = canvas_height or 600
+            else:
+                geometry_logger.debug(f"Canvas dimensions: {canvas_width}x{canvas_height}")
+                
+            # Calculate height based on rule frame content with multiple fallback strategies
+            frame_height = None
+            
+            # Method 0: Check for cached total content height from ui_rule_helpers
+            if hasattr(rule_frame, '_total_content_height') and rule_frame._total_content_height > 50:
+                frame_height = rule_frame._total_content_height
+                geometry_logger.debug(f"Using cached total content height: {frame_height}")
+            
+            # Method 1: Check if rule frames exist and use frame dimensions
+            if frame_height is None and hasattr(rule_frame, '_rule_frames') and rule_frame._rule_frames:
+                # Method 1.1: Use actual frame height
+                frame_height = rule_frame.winfo_reqheight()
+                frame_width = rule_frame.winfo_reqwidth()
+                geometry_logger.debug(f"Frame dimensions from winfo_reqheight: {frame_width}x{frame_height}")
+                
+                # If height looks wrong, try actual height
+                if frame_height < 50:
+                    actual_height = rule_frame.winfo_height()
+                    geometry_logger.debug(f"Frame actual height: {actual_height}")
+                    if actual_height > frame_height:
+                        frame_height = actual_height
+                
+                # Method 1.2: If still not reliable, try rule frame count estimation
+                if frame_height < 50 and rule_frame._rule_frames:
+                    rule_count = len([k for k in rule_frame._rule_frames.keys() if not k.endswith('_active_var')])
+                    if rule_count > 0:
+                        # Estimate ~100px per rule as fallback
+                        estimated_height = rule_count * 100
+                        geometry_logger.debug(f"Estimated height from rule count ({rule_count}): {estimated_height}")
+                        frame_height = estimated_height
+                
+                # Method 1.3: If height is still not reliable, sum heights of all rule frames
+                if frame_height < 50:  
+                    total_height = 0
+                    for child in rule_frame.winfo_children():
+                        if child.winfo_ismapped():
+                            try:
+                                child_height = child.winfo_reqheight() or child.winfo_height() or 0
+                                child_y = child.winfo_y() + child_height
+                                total_height = max(total_height, child_y)
+                                geometry_logger.debug(f"Child {child} at y={child.winfo_y()}, height={child_height}")
+                            except Exception as child_ex:
+                                geometry_logger.error(f"Error getting child dimensions: {child_ex}")
+                                continue
+                    
+                    if total_height > 0:
+                        frame_height = total_height + 20  # Add padding
+                        geometry_logger.debug(f"Calculated height from children: {frame_height}")
+            
+            # If still no valid height or no rules, use minimal height
+            if frame_height is None or frame_height < 50:
+                frame_height = 100
+                geometry_logger.debug("No valid height determined, using minimal height")
+            
+            # Ensure we have reasonable values
+            if frame_height < 100:
+                frame_height = max(500, canvas_height * 2)
+                geometry_logger.debug(f"Using larger fallback height: {frame_height}")
+            
+            # Apply the calculated scrollregion
+            new_scrollregion = (0, 0, canvas_width, frame_height)
+            
+            # Only update if the region has changed significantly
+            if current_scrollregion and current_scrollregion != "0 0 1 1" and current_scrollregion != "":
+                try:
+                    sr = current_scrollregion.split()
+                    old_width, old_height = float(sr[2]), float(sr[3])
+                    # If dimensions are close (within 5%), keep the old one for stability
+                    if (abs(old_width - canvas_width) / canvas_width < 0.05 and
+                        abs(old_height - frame_height) / frame_height < 0.05):
+                        geometry_logger.debug(f"Keeping existing scrollregion {current_scrollregion} (similar to new {new_scrollregion})")
+                        new_scrollregion = current_scrollregion
+                except Exception:
+                    pass
+                    
+            geometry_logger.info(f"Setting new scrollregion: {new_scrollregion}")
+            canvas.configure(scrollregion=new_scrollregion)
+            
+            # Update the width of the rule window to match canvas
+            try:
+                canvas.itemconfig(rule_refs["rule_window_id"], width=canvas_width-20)
+            except Exception as item_ex:
+                geometry_logger.error(f"Error updating window width: {item_ex}")
+                
+            # Verify the scrollregion was actually set
+            actual_scrollregion = canvas.cget("scrollregion")
+            if actual_scrollregion != new_scrollregion and actual_scrollregion == "0 0 1 1":
+                geometry_logger.warning(f"Scrollregion not set correctly! Got {actual_scrollregion}, expected {new_scrollregion}")
+                
+                # Try a more direct approach with explicit tuple conversion
+                scrollregion_tuple = (0, 0, int(canvas_width), int(frame_height))
+                canvas.configure(scrollregion=scrollregion_tuple)
+                geometry_logger.debug(f"Second attempt with tuple: {scrollregion_tuple}")
+                
+            # Schedule verification
+            def verify_scrollregion():
+                try:
+                    if not canvas.winfo_exists():
+                        return
+                    actual = canvas.cget("scrollregion")
+                    if actual == "0 0 1 1" or actual == "":
+                        geometry_logger.warning("Invalid scrollregion in verification. Force-updating.")
+                        # Force update with most aggressive values
+                        canvas.configure(scrollregion=(0, 0, canvas_width, frame_height*1.2))
+                except Exception as verify_ex:
+                    geometry_logger.error(f"Error in scrollregion verification: {verify_ex}")
+            
+            # Schedule verification after a short delay
+            canvas.after(100, verify_scrollregion)
+            
         except Exception as e:
             import traceback
             geometry_logger.error(f"Exception in update_canvas_scrollregion: {e}\n{traceback.format_exc()}")
             try:
+                # Try to recover by setting a fallback scrollregion
+                if canvas.winfo_exists():
+                    width = canvas.winfo_width() or 800
+                    height = 1000  # Large fallback height
+                    geometry_logger.warning(f"Setting emergency fallback scrollregion to (0, 0, {width}, {height})")
+                    canvas.configure(scrollregion=(0, 0, width, height))
+                    
                 def log_widget_tree(widget, prefix=""):
                     geometry_logger.debug(f"{prefix}{widget.winfo_class()} {widget.winfo_name()} ({widget})")
                     for child in widget.winfo_children():
@@ -253,13 +440,22 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
                 geometry_logger.error(f"Exception logging widget tree: {tree_exc}")
     def _bind_mousewheel(event):
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
     def _unbind_mousewheel(event):
         canvas.unbind_all("<MouseWheel>")
+    
     rule_refs["rule_frame"].bind("<Enter>", _bind_mousewheel)
     rule_refs["rule_frame"].bind("<Leave>", _unbind_mousewheel)
     
     def update_rule_list_preserve_scroll(rules, config_path, logger):
+        """
+        Update the rule list while preserving the current scroll position.
+        This function captures the current scroll position, rebuilds the rule list,
+        ensures the canvas scrollregion is updated, and then restores the scroll position.
+        """
         logger.info("Updating rule list with scroll preservation.")
+        
+        # Save current scroll position
         try:
             yview = canvas.yview()
             logger.debug(f"Saving scroll position: {yview}")
@@ -267,38 +463,103 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
             logger.debug(f"Could not get yview: {e}")
             yview = (0, 0)
         
+        # Reference to the rule frame before update
+        old_frame = rule_refs["rule_frame"]
+        old_height = getattr(old_frame, 'winfo_height', lambda: 0)()
+        
+        # Calculate actual content before update - another way to estimate scroll position
+        visible_children = []
+        if hasattr(old_frame, 'winfo_children'):
+            for child in old_frame.winfo_children():
+                if hasattr(child, 'winfo_ismapped') and child.winfo_ismapped():
+                    y_pos = child.winfo_y()
+                    visible_children.append((child.winfo_name(), y_pos))
+        
         # Always use the current rule_frame from rule_refs
         update_rule_list(rule_refs["rule_frame"], rules, config_path, logger, update_rule_list_preserve_scroll)
         
-        # Use a sequence of delayed restores to ensure scrolling is preserved
-        # This handles cases where layout and scrollregion updates take time
-        def restore_scroll(attempt=1, max_attempts=5):
-            try:
-                # Force an update of the canvas to ensure dimensions are correct
-                canvas.update_idletasks()
-                
-                # Get current scrollregion and check validity
-                bbox = canvas.bbox("all")
-                if bbox is None or bbox == (0, 0, 1, 1):
-                    logger.debug(f"Invalid bbox {bbox} on attempt {attempt}, will retry")
-                    if attempt < max_attempts:
-                        canvas.after(50 * attempt, lambda: restore_scroll(attempt + 1, max_attempts))
-                    return
-
-                # Apply saved scroll position
-                logger.debug(f"Restoring scroll to {yview[0]} (attempt {attempt})")
-                canvas.yview_moveto(yview[0])
-                
-                # Do a second delayed restore as final safety check
-                if attempt == 1:
-                    canvas.after(100, lambda: restore_scroll(max_attempts, max_attempts))
-            except Exception as e:
-                logger.debug(f"Error restoring scroll: {e}")
-                if attempt < max_attempts:
-                    canvas.after(50, lambda: restore_scroll(attempt + 1, max_attempts))
+        # Force the new frame to update and calculate its layout
+        if rule_refs["rule_frame"] != old_frame:
+            logger.debug("Frame was replaced during update")
         
-        # Start the first restore attempt with a delay
-        canvas.after(50, restore_scroll)
+        # Update the canvas scroll region immediately after rebuilding
+        canvas.after_idle(update_canvas_scrollregion)
+        
+        # Use a sequence of delayed restores with increasing aggressiveness
+        def restore_scroll(attempt=1, max_attempts=8):
+            try:
+                # Force updates to ensure dimensions are correct
+                if attempt == 1:
+                    canvas.update_idletasks()
+                    rule_refs["rule_frame"].update_idletasks()
+                
+                # Get current scrollregion
+                scrollregion = canvas.cget("scrollregion")
+                bbox = canvas.bbox("all")
+                
+                # Check if we have a valid scrollregion
+                if attempt <= 3 and (bbox is None or bbox == (0, 0, 1, 1) or scrollregion == ""):
+                    # First attempts - soft retry with gentle delay
+                    logger.debug(f"Invalid scrollregion on soft attempt {attempt}: {bbox}")
+                    if attempt == 3:
+                        # On 3rd attempt, force a scrollregion based on frame size
+                        frame_height = rule_refs["rule_frame"].winfo_reqheight() or old_height
+                        if frame_height < 50:  # Too small
+                            frame_height = max(500, old_height) # Use old height or fallback
+                        canvas_width = canvas.winfo_width() or 800
+                        new_scrollregion = (0, 0, canvas_width, frame_height)
+                        logger.debug(f"Forcing scrollregion to {new_scrollregion}")
+                        canvas.configure(scrollregion=new_scrollregion)
+                    
+                    if attempt < max_attempts:
+                        canvas.after(80 * attempt, lambda: restore_scroll(attempt + 1, max_attempts))
+                    return
+                
+                # Try to find a good position to scroll to
+                scroll_pos = yview[0]
+                
+                # If we have a good target in visible_children, use that
+                if attempt >= 4 and visible_children and hasattr(rule_refs["rule_frame"], 'winfo_children'):
+                    # More aggressive approach on later attempts - try to match a visible widget
+                    new_frame = rule_refs["rule_frame"]
+                    new_height = new_frame.winfo_reqheight() or 500
+                    scrollregion_height = float(canvas.cget("scrollregion").split()[-1]) if canvas.cget("scrollregion") else new_height
+                    
+                    # Find all mapped children in new frame
+                    new_children = []
+                    for child in new_frame.winfo_children():
+                        if hasattr(child, 'winfo_ismapped') and child.winfo_ismapped():
+                            y_pos = child.winfo_y()
+                            new_children.append((child.winfo_name(), y_pos))
+                    
+                    # Try to match children by position
+                    for old_name, old_y in visible_children:
+                        for new_name, new_y in new_children:
+                            if old_name == new_name:
+                                # Found a match! Calculate relative position
+                                scroll_frac = float(new_y) / max(1.0, scrollregion_height)
+                                logger.debug(f"Matched child {old_name} at y={new_y}, scrollregion={scrollregion_height}, frac={scroll_frac}")
+                                if 0.0 <= scroll_frac <= 1.0:
+                                    scroll_pos = scroll_frac
+                                break
+                
+                # Apply the scroll position
+                logger.debug(f"Restoring scroll to {scroll_pos} (attempt {attempt})")
+                canvas.yview_moveto(scroll_pos)
+                
+                # Extra redundant restore attempts to handle delayed layouts
+                if attempt == 1:
+                    # Schedule additional attempts
+                    canvas.after(150, lambda: restore_scroll(4, max_attempts))  # Skip to more aggressive attempts
+                    canvas.after(300, lambda: restore_scroll(max_attempts, max_attempts))  # Final attempt
+                
+            except Exception as e:
+                logger.debug(f"Error in restore_scroll (attempt {attempt}): {e}")
+                if attempt < max_attempts:
+                    canvas.after(50 * attempt, lambda: restore_scroll(attempt + 1, max_attempts))
+        
+        # Start the restore sequence
+        canvas.after(20, restore_scroll)
 
     # Use the wrapper for initial population
     update_rule_list_preserve_scroll(rules, config_directory, logger)
@@ -533,7 +794,7 @@ def run():
     """
     Main function to initialize and run the TaskMover application.
     """
-    logger = configure_logger()
+    logger = configure_logger("Taskmover")
  
     # Define configuration paths
     config_directory = os.path.expanduser("~/default_dir/config")

@@ -14,8 +14,9 @@ from tkinter import ttk
 import logging
 from pathlib import Path
 
-logger = logging.getLogger("FileOperations")
-def organize_files(settings: dict, rules: dict, logger: logging.Logger, organisation_folder: str = None) -> None:
+logger = logging.getLogger("File Operations")
+
+def organize_files(settings: dict, rules: dict, logger: logging.Logger, organisation_folder: str | None = None) -> None:
     """
     Organize files in the organization folder based on rules.
 

@@ -349,11 +349,15 @@ def open_settings_window(
         level_cb.pack(side="left", padx=10)
         Tooltip(cb, f"Enable logging for {logger_name} component.")
         Tooltip(level_cb, f"Set log level for {logger_name}.")
+    
     def save_logging_settings():
         for logger_name in loggers:
             settings["logging_components"][logger_name] = logger_vars[logger_name].get()
             settings["logging_levels"][logger_name] = logger_level_vars[logger_name].get()
-        save_settings(settings)
+        from taskmover.config import save_settings as save_settings_func
+        import os
+        settings_path = os.path.expanduser("~/default_dir/config/settings.yml")
+        save_settings_func(settings_path, settings, logger)
     ttkb.Button(logging_frame, text="Save Logging Settings", command=save_logging_settings).pack(pady=10)
 
     # --- Save/Cancel Buttons for all tabs ---

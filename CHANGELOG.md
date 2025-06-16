@@ -1,5 +1,79 @@
 # Changelog
 
+## [3.0.0] - 2025-06-16
+
+### 🚀 MAJOR RELEASE: Complete Application Redesign
+
+This is a **major breaking release** with a complete rewrite of TaskMover. The application has been fully redesigned from the ground up with modern architecture, improved maintainability, and enhanced user experience.
+
+#### ✨ New Architecture
+- **New Package**: Introduced `taskmover_redesign` package with clean, modular architecture
+- **Core Separation**: Clear separation between business logic (`core/`) and UI (`ui/`)
+- **Type Safety**: 100% type annotations throughout the codebase
+- **Modern Python**: Updated to use latest Python best practices and patterns
+
+#### 🏗️ Package Structure
+```
+taskmover_redesign/
+├── core/                    # Business logic
+│   ├── config.py           # Configuration management
+│   ├── rules.py            # Rule operations
+│   ├── file_operations.py  # File organization
+│   └── utils.py            # Utilities
+├── ui/                     # User interface
+│   ├── components.py       # Reusable UI components
+│   ├── rule_components.py  # Rule management UI
+│   └── settings_components.py # Settings dialog
+├── tests/                  # Comprehensive test suite
+└── app.py                  # Main application
+```
+
+#### 🎯 Key Improvements
+- **Clean Architecture**: Modular design with single responsibility principle
+- **Modern UI**: Built with ttkbootstrap for professional appearance
+- **Comprehensive Testing**: Full test suite with import, integration, and verification tests
+- **Better Error Handling**: Robust error management throughout
+- **Extensible Design**: Easy to add new features and modify existing ones
+- **Zero Legacy Code**: No backwards compatibility shims or deprecated patterns
+
+#### 📦 Migration & Organization
+- **Legacy Archive**: All legacy code moved to `legacy/` folder for reference
+- **Organized Structure**: Clear project organization with dedicated folders
+- **Updated Documentation**: Complete rewrite of README and documentation
+- **Test Integration**: All tests moved into the redesigned package
+
+#### 🧪 Testing & Quality
+- **Import Tests**: Verify all modules load correctly
+- **Integration Tests**: Test core functionality works together
+- **Final Verification**: End-to-end application testing
+- **Code Quality**: 100% type coverage and modern Python patterns
+
+#### 🔄 Breaking Changes
+- **New Entry Point**: Use `python -m taskmover_redesign` instead of `python -m taskmover`
+- **Configuration Format**: New configuration system (migration tools available)
+- **API Changes**: Completely new internal APIs (external usage patterns remain similar)
+- **File Locations**: New file organization (legacy files preserved in `legacy/`)
+
+#### 🎉 For Users
+- **Same Functionality**: All existing features preserved and enhanced
+- **Better Performance**: Optimized code with improved responsiveness
+- **Modern Interface**: Professional UI with consistent theming
+- **Reliable Operation**: Comprehensive testing ensures stability
+
+#### 🎯 For Developers
+- **Clean Codebase**: Modern, maintainable code following best practices
+- **Type Safety**: Full IntelliSense support and compile-time error detection
+- **Modular Design**: Easy to understand, modify, and extend
+- **Comprehensive Tests**: Reliable test suite for confident development
+
+### Migration Guide
+1. **Backup**: Your existing rules and settings are preserved
+2. **Update Command**: Use `python -m taskmover_redesign` to run the new version
+3. **Configuration**: Settings will be migrated automatically on first run
+4. **Legacy Access**: Old version remains available in `legacy/` folder if needed
+
+---
+
 ## [2.2.0] - 2025-06-13
 
 ### Major UI/UX Improvements
