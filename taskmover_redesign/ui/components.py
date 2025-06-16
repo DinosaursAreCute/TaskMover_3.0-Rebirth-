@@ -338,6 +338,34 @@ class ProgressDialog:
     def is_canceled(self) -> bool:
         """Check if operation was canceled."""
         return self.canceled
+    
+    def set_completed(self, message: str = "✅ Operation completed successfully!", 
+                     title: str = "Complete"):
+        """Set the progress dialog to completed state with detailed message."""
+        self.stop_progress()
+        self.progress_bar.config(mode="determinate", maximum=100, value=100)
+        self.update_status(message)
+        
+        # Update dialog title to indicate completion
+        self.dialog.title(title)
+        
+        # Enable cancel button and change it to "Close"
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.config(text="Close", state="normal")
+    
+    def set_error(self, message: str = "❌ An error occurred during the operation", 
+                  title: str = "Error"):
+        """Set the progress dialog to error state with detailed message."""
+        self.stop_progress()
+        self.progress_bar.config(mode="determinate", maximum=100, value=0)
+        self.update_status(message)
+        
+        # Update dialog title to indicate error
+        self.dialog.title(title)
+        
+        # Enable cancel button and change it to "Close"
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.config(text="Close", state="normal")
 
 
 # Dummy classes for compatibility

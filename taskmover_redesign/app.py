@@ -548,7 +548,8 @@ class TaskMoverApp:
         progress_dialog.grab_set()
         center_window(progress_dialog)
         
-        ttkb.Label(progress_dialog, text="Organizing files...", font=("", 12, "bold")).pack(pady=20)
+        title_label = ttkb.Label(progress_dialog, text="Organizing files...", font=("", 12, "bold"))
+        title_label.pack(pady=20)
         
         progress = ttkb.Progressbar(progress_dialog, mode="indeterminate", length=500)
         progress.pack(pady=10)
@@ -578,18 +579,50 @@ class TaskMoverApp:
             progress_dialog.destroy()
             self.update_activity_log("Organization completed successfully")
             
-        close_btn = ttkb.Button(progress_dialog, text="Close", command=close_dialog)
+        def completion_callback():
+            # Stop the indeterminate animation and show completion
+            progress.stop()
+            progress.config(mode="determinate", maximum=100, value=100)
+            
+            # Count processed files from the listbox
+            processed_count = file_listbox.size()
+            
+            if processed_count > 0:
+                completion_message = f"✅ Organization completed successfully!\n{processed_count} file(s) organized."
+                title_message = f"✅ File Organization Complete - {processed_count} files organized"
+            else:
+                completion_message = "✅ Organization completed!\nNo files needed to be moved."
+                title_message = "✅ File Organization Complete - No files to organize"
+            
+            # Update both the status and title labels
+            status_label.config(text=completion_message)
+            title_label.config(text=title_message)
+            close_btn.config(text="Close", state="normal")
+            
+            # Update dialog window title
+            progress_dialog.wm_title("File Organization - Complete")
+            
+            progress_dialog.update()
+            
+        close_btn = ttkb.Button(progress_dialog, text="Close", command=close_dialog, state="disabled")
         close_btn.pack(pady=10)
         
-        # Run organization in background
-        try:
-            start_organization(self.settings, self.rules, self.logger, 
-                             progress_callback=progress_callback, 
-                             file_moved_callback=file_moved_callback)
-            status_label.config(text="Organization completed!")
-        except Exception as e:
-            status_label.config(text=f"Error: {str(e)}")
-            self.logger.error(f"Organization failed: {e}")
+        # Run organization in background thread
+        def run_organization():
+            try:
+                start_organization(self.settings, self.rules, self.logger, 
+                                 progress_callback=progress_callback, 
+                                 file_moved_callback=file_moved_callback)
+                # Organization completed successfully - schedule UI update on main thread
+                progress_dialog.after(0, completion_callback)
+            except Exception as e:
+                # Handle error on main thread
+                progress_dialog.after(0, lambda: self._handle_organization_error(e, progress_dialog, progress, status_label))
+        
+        # Start organization in separate thread
+        import threading
+        org_thread = threading.Thread(target=run_organization, daemon=True)
+        org_thread.start()
             
     def test_rules(self):
         """Test rules without moving files (dry run)"""
@@ -1036,6 +1069,29 @@ Licensed under MIT License"""
         ok_btn = ttkb.Button(main_frame, text="OK", command=about_dialog.destroy)
         ok_btn.pack(pady=10)
 
+    def _handle_organization_error(self, error, progress_dialog, progress, status_label):
+        """Handle organization errors in the progress dialog."""
+        progress.stop()
+        progress.config(mode="determinate", maximum=100, value=0)
+        
+        error_message = f"❌ Organization failed!\nError: {str(error)}"
+        status_label.config(text=error_message)
+        self.logger.error(f"Organization failed: {error}")
+        
+        # Update dialog title to indicate error
+        progress_dialog.wm_title("File Organization - Error")
+        
+        # Enable close button and update its text
+        close_btn = None
+        for widget in progress_dialog.winfo_children():
+            if isinstance(widget, ttkb.Button):
+                close_btn = widget
+                break
+        if close_btn:
+            close_btn.config(text="Close", state="normal")
+        
+        progress_dialog.update()
+    
 def main():
     """Main entry point"""
     app = TaskMoverApp()
