@@ -11,4 +11,4 @@ This package contains:
 """
 
 __version__ = "3.0.0"
-__author__ = "Dino"
+__author__ = "Dino corp"
