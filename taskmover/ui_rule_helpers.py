@@ -9,6 +9,7 @@ from tkinter import messagebox, filedialog, simpledialog
 from taskmover.config import save_rules
 from taskmover.pattern_grid_helpers import pattern_grid_label, pattern_grid_edit
 from .rule_priority import get_sorted_rule_keys, move_rule_priority, set_rule_priority
+from .rule_name_editor import editable_rule_name
 import logging
 import time
 
@@ -61,8 +62,30 @@ def update_parent_canvas_scrollregion(widget):
                 logger.debug("Canvas is empty; setting scrollregion to (0,0,0,0)")
                 canvas.configure(scrollregion=(0, 0, 0, 0))
             else:
-                logger.debug("Canvas bbox is (0,0,1,1) but canvas is not empty; skipping scrollregion update to avoid recursion.")
-            return
+                logger.debug("Canvas bbox is (0,0,1,1) but canvas is not empty; will attempt to update with size of window item")
+                # Find the first window item and use its width and height as fallback
+                windows = [canvas.itemcget(item, 'window') for item in canvas.find_all() if canvas.type(item) == 'window']
+                for win_id in windows:
+                    if win_id:
+                        try:
+                            win = canvas.nametowidget(win_id)
+                            # Use a timer to allow the window to be drawn before calculating scrollregion
+                            def delayed_update():
+                                try:
+                                    win.update_idletasks()
+                                    width = win.winfo_width() or 500  # Fallback width
+                                    height = win.winfo_height() or 500  # Fallback height
+                                    logger.debug(f"Using window dimensions for scrollregion: {width}x{height}")
+                                    canvas.configure(scrollregion=(0, 0, width, height))
+                                except Exception as ex:
+                                    logger.error(f"Error in delayed scrollregion update: {ex}")
+                            canvas.after(50, delayed_update)
+                            return
+                        except Exception as ex:
+                            logger.error(f"Error finding window for scrollregion: {ex}")
+                # If we can't find any valid window, set a fallback scrollregion
+                canvas.configure(scrollregion=(0, 0, 500, 500))  # Default fallback
+            # Don't return here, allow the function to continue in case other logic is needed
         # Normal update
         canvas.configure(scrollregion=bbox)
         logger.debug(f"Updated canvas scrollregion to {bbox}")
@@ -255,63 +278,8 @@ def edit_rule(rule_key, rules, config_path, logger, rule_frame):
     ttkb.Button(edit_window, text="Save", command=save_changes).pack(pady=10)
     ttkb.Button(edit_window, text="Cancel", command=edit_window.destroy).pack(pady=5)
 
-def editable_rule_name(parent, rule_key, rules, config_path, logger, on_rename, font=("Helvetica", 12, "bold")):
-    frame = ttkb.Frame(parent)
-    name_var = tk.StringVar(value=rule_key)
-    label = ttkb.Label(frame, textvariable=name_var, font=font, cursor="xterm")
-    entry = ttkb.Entry(frame, textvariable=name_var, font=font, width=24)
-    check_btn = ttkb.Button(frame, text="✔", width=2, style="success.TButton")
-    cancel_flag = {'cancel': False}
-    current_key = [rule_key]  # mutable container for current rule key
-    def show_entry(event=None):
-        label.pack_forget()
-        entry.pack(side="left", fill="x", expand=True)
-        check_btn.pack(side="left")
-        entry.focus_set()
-        entry.icursor(tk.END)
-    def save_name(event=None):
-        new_name = name_var.get().strip()
-        if not new_name or new_name == current_key[0]:
-            cancel_edit()
-            return
-        if new_name in rules:
-            messagebox.showerror("Name Exists", f"A rule named '{new_name}' already exists.")
-            return
-        # Preserve id and priority
-        rule_data = rules.pop(current_key[0])
-        rules[new_name] = rule_data
-        logger.info(f"Rule renamed from '{current_key[0]}' to '{new_name}' (priority: {rule_data.get('priority')})")
-        save_rules(config_path, rules)
-        current_key[0] = new_name
-        name_var.set(new_name)
-        entry.pack_forget()
-        check_btn.pack_forget()
-        label.pack(side="left")
-        # Find the main rule list frame (the one with _rule_frames)
-        main_rule_frame = parent
-        while main_rule_frame is not None and not hasattr(main_rule_frame, '_rule_frames'):
-            main_rule_frame = getattr(main_rule_frame, 'master', None)
-        if main_rule_frame is not None:
-            update_rule_list(main_rule_frame, rules, config_path, logger)
-        on_rename(new_name)
-    def cancel_edit(event=None):
-        if cancel_flag['cancel']:
-            return
-        name_var.set(current_key[0])
-        entry.pack_forget()
-        check_btn.pack_forget()
-        label.pack(side="left")
-    def check_and_save():
-        cancel_flag['cancel'] = True
-        save_name()
-        cancel_flag['cancel'] = False
-    label.bind("<Button-1>", show_entry)
-    entry.bind("<Return>", save_name)
-    entry.bind("<Escape>", cancel_edit)
-    entry.bind("<FocusOut>", cancel_edit)
-    check_btn.config(command=check_and_save)
-    label.pack(side="left")
-    return frame, name_var
+# The editable_rule_name function has been moved to rule_name_editor.py
+# and is imported at the top of this file
 
 def update_or_create_rule_frame(rule_key, rules, config_path, logger, rule_frame, rule_frames, update_rule_list_fn=None, scrollable_widget=None):
     # Remove old frame if it exists (for rename or delete)
@@ -336,12 +304,22 @@ def update_or_create_rule_frame(rule_key, rules, config_path, logger, rule_frame
     header_frame.pack(fill="x", pady=2)
     priority_label = ttkb.Label(header_frame, text=f"{user_priority}.", font=("Helvetica", 12, "bold"))
     priority_label.pack(side="left", padx=(0, 4))
+    
     def on_rename(new_name):
         # Preserve collapse state on rename
         collapse_state[new_name] = collapse_state.pop(rule_key, collapsed.get())
-        frame.destroy()
-        rule_frames.pop(rule_key, None)
-        update_or_create_rule_frame(new_name, rules, config_path, logger, rule_frame, rule_frames, update_rule_list_fn, scrollable_widget)
+        # Instead of just updating this single rule, do a complete rebuild
+        # of the rule list to ensure rules are displayed in correct priority order
+        if update_rule_list_fn:
+            # Use the update_rule_list_preserve_scroll function if available
+            logger.debug(f"Using update_rule_list_fn to rebuild rule list after renaming rule to {new_name}")
+            update_rule_list_fn(rules, config_path, logger)
+        else:
+            # Fall back to standard update if no scroll-preserving function
+            logger.debug(f"Doing standard rebuild after renaming rule to {new_name}")
+            frame.destroy()
+            rule_frames.pop(rule_key, None) 
+            update_or_create_rule_frame(new_name, rules, config_path, logger, rule_frame, rule_frames, update_rule_list_fn, scrollable_widget)
     name_frame, _ = editable_rule_name(header_frame, rule_key, rules, config_path, logger, on_rename)
     name_frame.pack(side="left", pady=2)
     # Active toggle in header

@@ -212,7 +212,7 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
-
+    
     def update_canvas_scrollregion():
         try:
             window_ids = canvas.find_all()
@@ -251,60 +251,54 @@ def setup_ui(root, base_path_var, rules, config_directory, style, settings, logg
                 log_widget_tree(root)
             except Exception as tree_exc:
                 geometry_logger.error(f"Exception logging widget tree: {tree_exc}")
-    # --- Event Handlers (must be defined before create_rule_frame) ---
-    def on_frame_configure(event=None):
-        try:
-            geometry_logger.debug(f"<Configure> event: widget={event.widget if event else None}, width={canvas.winfo_width()}, height={canvas.winfo_height()}")
-            update_canvas_scrollregion()
-            if rule_refs["rule_window_id"] in canvas.find_all():
-                canvas.itemconfig(rule_refs["rule_window_id"], width=canvas.winfo_width())
-            else:
-                geometry_logger.warning(f"rule_window_id {rule_refs['rule_window_id']} not found in canvas.")
-        except Exception as e:
-            import traceback
-            geometry_logger.error(f"Exception in on_frame_configure: {e}\n{traceback.format_exc()}")
-            try:
-                def log_widget_tree(widget, prefix=""):
-                    geometry_logger.debug(f"{prefix}{widget.winfo_class()} {widget.winfo_name()} ({widget})")
-                    for child in widget.winfo_children():
-                        log_widget_tree(child, prefix + "  ")
-                log_widget_tree(root)
-            except Exception as tree_exc:
-                geometry_logger.error(f"Exception logging widget tree: {tree_exc}")
-    def _on_mousewheel(event):
-        """
-        Handle mouse wheel events for smooth scrolling in the main window canvas.
-        Scrolls in small increments for a smoother user experience.
-        Args:
-            event: The Tkinter mouse wheel event.
-        """
-        # Smooth scroll: use smaller increments and multiple events per scroll
-        if event.delta:
-            for _ in range(abs(event.delta) // 40):
-                canvas.yview_scroll(int(-1 * (event.delta / abs(event.delta))), "units")
-        else:
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
     def _bind_mousewheel(event):
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
     def _unbind_mousewheel(event):
         canvas.unbind_all("<MouseWheel>")
     rule_refs["rule_frame"].bind("<Enter>", _bind_mousewheel)
     rule_refs["rule_frame"].bind("<Leave>", _unbind_mousewheel)
-
+    
     def update_rule_list_preserve_scroll(rules, config_path, logger):
         logger.info("Updating rule list with scroll preservation.")
         try:
             yview = canvas.yview()
-        except Exception:
+            logger.debug(f"Saving scroll position: {yview}")
+        except Exception as e:
+            logger.debug(f"Could not get yview: {e}")
             yview = (0, 0)
+        
         # Always use the current rule_frame from rule_refs
         update_rule_list(rule_refs["rule_frame"], rules, config_path, logger, update_rule_list_preserve_scroll)
-        def restore_scroll():
+        
+        # Use a sequence of delayed restores to ensure scrolling is preserved
+        # This handles cases where layout and scrollregion updates take time
+        def restore_scroll(attempt=1, max_attempts=5):
             try:
+                # Force an update of the canvas to ensure dimensions are correct
+                canvas.update_idletasks()
+                
+                # Get current scrollregion and check validity
+                bbox = canvas.bbox("all")
+                if bbox is None or bbox == (0, 0, 1, 1):
+                    logger.debug(f"Invalid bbox {bbox} on attempt {attempt}, will retry")
+                    if attempt < max_attempts:
+                        canvas.after(50 * attempt, lambda: restore_scroll(attempt + 1, max_attempts))
+                    return
+
+                # Apply saved scroll position
+                logger.debug(f"Restoring scroll to {yview[0]} (attempt {attempt})")
                 canvas.yview_moveto(yview[0])
-            except Exception:
-                pass
-        canvas.after(30, restore_scroll)
+                
+                # Do a second delayed restore as final safety check
+                if attempt == 1:
+                    canvas.after(100, lambda: restore_scroll(max_attempts, max_attempts))
+            except Exception as e:
+                logger.debug(f"Error restoring scroll: {e}")
+                if attempt < max_attempts:
+                    canvas.after(50, lambda: restore_scroll(attempt + 1, max_attempts))
+        
+        # Start the first restore attempt with a delay
+        canvas.after(50, restore_scroll)
 
     # Use the wrapper for initial population
     update_rule_list_preserve_scroll(rules, config_directory, logger)
