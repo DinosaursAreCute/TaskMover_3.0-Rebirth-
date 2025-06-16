@@ -180,18 +180,6 @@ TaskMover supports multiple beautiful themes:
 ### Custom Themes
 Create your own themes by modifying the theme configuration files in the settings directory.
 
-## 🔌 Plugins & Extensions
-
-TaskMover supports plugins for extended functionality:
-
-### Available Plugins
-- **Cloud Integration**: Organize files to/from cloud storage
-- **Media Processor**: Extract metadata from photos and videos
-- **Document Parser**: Organize documents by content
-- **Archive Manager**: Advanced compression and extraction
-
-### Creating Plugins
-See the [Plugin Development Guide](docs/plugin-development.md) for creating custom plugins.
 
 ## 🛠️ Configuration
 
@@ -284,26 +272,14 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 🙏 Acknowledgments
 
-### Built With Love Using:
+### Built Using:
 - **[Python](https://python.org)** - Core language
 - **[ttkbootstrap](https://ttkbootstrap.readthedocs.io/)** - Modern UI components
 - **[PyYAML](https://pyyaml.org/)** - Configuration management
 - **[pytest](https://pytest.org/)** - Testing framework
 
-### Special Thanks:
-- **Contributors** who have helped improve TaskMover
-- **Beta testers** who provided valuable feedback
-- **Open source community** for inspiration and tools
-- **Users** who trust TaskMover with their file organization
-
-## 📞 Support & Community
-
 ### Getting Help
 - 📖 **Documentation**: Check the [docs folder](docs/) for detailed guides
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/TaskMover/issues)
-- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/yourusername/TaskMover/discussions)
-- 💬 **Community Chat**: Join our Discord server
-- 📧 **Email Support**: support@taskmover.dev
 
 ### Community Guidelines
 Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand our community standards.
@@ -317,11 +293,11 @@ Check out our [roadmap](docs/TODO.md) to see what's coming next!
 
 **TaskMover** - *Organize your digital life, one file at a time* ✨
 
-[🏠 Home](https://github.com/yourusername/TaskMover) • 
+[🏠 Home](https://github.com/DinosaursAreCute/TaskMover) • 
 [📖 Docs](docs/) • 
-[🚀 Releases](https://github.com/yourusername/TaskMover/releases) • 
-[💬 Community](https://github.com/yourusername/TaskMover/discussions)
+[🚀 Releases](https://github.com/DinosaursAreCute/TaskMover/releases) • 
+[💬 Community](https://github.com/DinosaursAreCute/TaskMover/discussions)
 
-*Made with ❤️ by the TaskMover team*
+*Made by Dino*
 
 </div>
