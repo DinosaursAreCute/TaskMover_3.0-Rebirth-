@@ -17,7 +17,7 @@ from .core import (
     ConfigManager, RuleManager, FileOrganizer, 
     load_rules, save_rules, load_settings, save_settings, load_or_initialize_rules,
     get_sorted_rule_keys, move_rule_priority, start_organization,
-    center_window, configure_logger, setup_logging
+    center_window, center_window_on_parent, configure_logger, setup_logging
 )
 from .ui.components import Tooltip, ProgressDialog, ConfirmDialog
 from .ui.rule_components import add_rule_button, edit_rule, enable_all_rules, disable_all_rules
@@ -31,8 +31,9 @@ class TaskMoverApp:
         # Initialize main window
         self.root = ttkb.Window(themename="flatly")
         self.root.title("TaskMover - File Organization Assistant")
-        self.root.geometry("900x700")
-        center_window(self.root)
+        
+        # Use proportional sizing for main window (60% of screen width, 70% of screen height)
+        center_window(self.root, proportional=True, width_ratio=0.6, height_ratio=0.7)
         
         # Load configuration
         self.base_directory = os.path.expanduser("~/default_dir")
@@ -1045,10 +1046,11 @@ Licensed under MIT License"""
 
         about_dialog = tk.Toplevel(self.root)
         about_dialog.title("About TaskMover")
-        about_dialog.geometry("450x400")
         about_dialog.transient(self.root)
         about_dialog.grab_set()
-        center_window(about_dialog)
+        
+        # Use proportional sizing for about dialog (40% of parent width, 50% of parent height)
+        center_window_on_parent(about_dialog, self.root, proportional=True, width_ratio=0.4, height_ratio=0.5)
         
         main_frame = ttkb.Frame(about_dialog, padding=20)
         main_frame.pack(fill="both", expand=True)

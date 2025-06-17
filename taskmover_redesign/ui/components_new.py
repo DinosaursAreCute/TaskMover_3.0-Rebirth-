@@ -8,6 +8,8 @@ from tkinter import ttk, messagebox
 import ttkbootstrap as ttkb
 from typing import Optional, Callable, Any
 
+from ..core.utils import center_window_on_parent
+
 
 class Tooltip:
     """Modern tooltip implementation."""
@@ -72,19 +74,30 @@ class Tooltip:
 class SimpleDialog:
     """Base class for simple dialogs."""
     
-    def __init__(self, parent: tk.Widget, title: str, width: int = 400, height: int = 300):
+    def __init__(self, parent: tk.Widget, title: str, width: int = 400, height: int = 300, 
+                 proportional: bool = False, width_ratio: float = 0.4, height_ratio: float = 0.5):
         self.result = None
         self.parent = parent
         
         # Create dialog window
         self.dialog = tk.Toplevel(parent)
         self.dialog.title(title)
-        self.dialog.geometry(f"{width}x{height}")
         self.dialog.transient(parent.winfo_toplevel())
         self.dialog.grab_set()
         
-        # Center the dialog
-        self._center_dialog(width, height)
+        # Calculate dimensions and center the dialog
+        if proportional:
+            # Use proportional sizing based on parent or screen
+            center_window_on_parent(
+                self.dialog, parent, 
+                proportional=True, 
+                width_ratio=width_ratio, 
+                height_ratio=height_ratio
+            )
+        else:
+            # Use fixed dimensions
+            self.dialog.geometry(f"{width}x{height}")
+            self._center_dialog(width, height)
         
         # Handle window close
         self.dialog.protocol("WM_DELETE_WINDOW", self.cancel)
@@ -100,16 +113,11 @@ class SimpleDialog:
         self.create_buttons()
     
     def _center_dialog(self, width: int, height: int):
-        """Center the dialog on the parent window."""
-        parent_x = self.parent.winfo_rootx()
-        parent_y = self.parent.winfo_rooty()
-        parent_width = self.parent.winfo_width()
-        parent_height = self.parent.winfo_height()
-        
-        x = parent_x + (parent_width - width) // 2
-        y = parent_y + (parent_height - height) // 2
-        
-        self.dialog.geometry(f"{width}x{height}+{x}+{y}")
+        """Center the dialog on the parent window with proportional sizing."""
+        center_window_on_parent(
+            self.dialog, self.parent, 
+            width=width, height=height
+        )
     
     def create_content(self):
         """Override this method to create dialog content."""
@@ -254,15 +262,10 @@ class ProgressDialog:
     
     def _center_dialog(self):
         """Center the dialog on the parent."""
-        parent_x = self.parent.winfo_rootx()
-        parent_y = self.parent.winfo_rooty()
-        parent_width = self.parent.winfo_width()
-        parent_height = self.parent.winfo_height()
-        
-        x = parent_x + (parent_width - 450) // 2
-        y = parent_y + (parent_height - 200) // 2
-        
-        self.dialog.geometry(f"450x200+{x}+{y}")
+        center_window_on_parent(
+            self.dialog, self.parent, 
+            width=450, height=200
+        )
     
     def _create_content(self, message: str, cancelable: bool):
         """Create dialog content."""

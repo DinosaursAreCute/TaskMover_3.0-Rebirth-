@@ -34,7 +34,7 @@ class SettingsDialog(SimpleDialog):
         self.auto_backup_var = tk.BooleanVar(value=settings.get("auto_backup", True))
         self.show_tooltips_var = tk.BooleanVar(value=settings.get("show_tooltips", True))
         
-        super().__init__(parent, "Settings", 500, 400)
+        super().__init__(parent, "Settings", proportional=True, width_ratio=0.4, height_ratio=0.5)
     
     def create_content(self):
         """Create the settings form."""
