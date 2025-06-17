@@ -1,5 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+taskmover/.pycache/
+tests/__pycache__/
 *.py[cod]
 *.pyo
 
@@ -14,8 +16,7 @@ build/
 # Logs
 *.log
 
-
-# Config and settings
+# Config and settings (runtime/user data)
 default_dir/
 config/
 settings.yml
@@ -29,7 +30,7 @@ Thumbs.db
 .idea/
 *.iml
 
-# Python cache
+# Python packaging
 *.egg-info/
 *.egg
 *.whl
