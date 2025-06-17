@@ -11,27 +11,112 @@ from typing import Optional, Union
 logger = logging.getLogger("TaskMover.Utils")
 
 
+def get_screen_dimensions(window: tk.Tk | tk.Toplevel) -> tuple[int, int]:
+    """Get screen dimensions."""
+    return window.winfo_screenwidth(), window.winfo_screenheight()
+
+
+def calculate_proportional_size(screen_width: int, screen_height: int, 
+                               width_ratio: float = 0.6, height_ratio: float = 0.7) -> tuple[int, int]:
+    """Calculate proportional window size based on screen dimensions."""
+    width = int(screen_width * width_ratio)
+    height = int(screen_height * height_ratio)
+    
+    # Ensure minimum sizes
+    min_width, min_height = 400, 300
+    width = max(width, min_width)
+    height = max(height, min_height)
+    
+    # Ensure maximum sizes (prevent windows from being too large)
+    max_width = int(screen_width * 0.9)
+    max_height = int(screen_height * 0.9)
+    width = min(width, max_width)
+    height = min(height, max_height)
+    
+    return width, height
+
+
 def center_window(window: tk.Tk | tk.Toplevel, 
                  width: Optional[int] = None, 
-                 height: Optional[int] = None) -> None:
-    """Center a window on the screen."""
-    # Get window dimensions
-    if width is None or height is None:
+                 height: Optional[int] = None,
+                 proportional: bool = False,
+                 width_ratio: float = 0.6,
+                 height_ratio: float = 0.7) -> None:
+    """Center a window on the screen with optional proportional sizing."""
+    # Get screen dimensions
+    screen_width, screen_height = get_screen_dimensions(window)
+    
+    # Calculate window dimensions
+    if proportional or (width is None and height is None):
+        # If proportional is requested or both width and height are None, use proportional sizing
+        width, height = calculate_proportional_size(
+            screen_width, screen_height, width_ratio, height_ratio
+        )
+    elif width is None:
+        # If only width is None, use requested height and calculate width from window's requested width
         window.update_idletasks()
         width = window.winfo_reqwidth()
+    elif height is None:
+        # If only height is None, use requested width and calculate height from window's requested height
+        window.update_idletasks()
         height = window.winfo_reqheight()
+    # else: both width and height are provided, use as is
     
-    # Get screen dimensions
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
-    
-    # Calculate position
+    # Calculate position (center on screen)
     x = int((screen_width - width) // 2)
     y = int((screen_height - height) // 2)
     
-    # Set window position
+    # Ensure window doesn't go off-screen
+    x = max(0, min(x, screen_width - width))
+    y = max(0, min(y, screen_height - height))
+    
+    # Set window position and size
     window.geometry(f"{width}x{height}+{x}+{y}")
-    logger.debug(f"Centered window: {width}x{height} at ({x}, {y})")
+    logger.debug(f"Centered window: {width}x{height} at ({x}, {y}) (screen: {screen_width}x{screen_height})")
+
+
+def center_window_on_parent(child: tk.Toplevel, parent: tk.Widget,
+                           width: Optional[int] = None, 
+                           height: Optional[int] = None,
+                           proportional: bool = False,
+                           width_ratio: float = 0.8,
+                           height_ratio: float = 0.8) -> None:
+    """Center a child window on its parent window."""
+    # Get parent window info
+    parent.update_idletasks()
+    parent_x = parent.winfo_rootx()
+    parent_y = parent.winfo_rooty()
+    parent_width = parent.winfo_width()
+    parent_height = parent.winfo_height()
+    
+    # Calculate child window dimensions
+    if proportional or (width is None and height is None):
+        width = int(parent_width * width_ratio)
+        height = int(parent_height * height_ratio)
+        
+        # Ensure minimum sizes
+        min_width, min_height = 300, 200
+        width = max(width, min_width)
+        height = max(height, min_height)
+    elif width is None or height is None:
+        child.update_idletasks()
+        if width is None:
+            width = child.winfo_reqwidth()
+        if height is None:
+            height = child.winfo_reqheight()
+    
+    # Calculate position (center on parent)
+    x = parent_x + (parent_width - width) // 2
+    y = parent_y + (parent_height - height) // 2
+    
+    # Get screen dimensions to ensure child doesn't go off-screen
+    screen_width, screen_height = get_screen_dimensions(child)
+    x = max(0, min(x, screen_width - width))
+    y = max(0, min(y, screen_height - height))
+    
+    # Set window position and size
+    child.geometry(f"{width}x{height}+{x}+{y}")
+    logger.debug(f"Centered child window: {width}x{height} at ({x}, {y}) on parent at ({parent_x}, {parent_y})")
 
 
 def ensure_directory(path: Union[str, Path]) -> Path:
