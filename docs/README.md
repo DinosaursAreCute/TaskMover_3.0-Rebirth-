@@ -1,6 +1,6 @@
 # TaskMover Documentation
 
-Welcome to the comprehensive documentation for TaskMover - a powerful and flexible file organization tool.
+Welcome to the comprehensive documentation for TaskMover - a powerful and flexible file organization tool. (Ai generated documentation, I did not proof read this yet)
 
 ## � Documentation Structure
 
