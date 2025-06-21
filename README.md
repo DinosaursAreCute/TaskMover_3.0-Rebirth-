@@ -6,6 +6,9 @@
 
 **TaskMover** is a powerful, modern file organization tool that automatically organizes your files based on customizable rules and patterns. Say goodbye to cluttered folders and hello to an organized digital life!
 
+> ⚠️ **Warning**  
+> Ensure you have a backup of your files before running TaskMover. While the application is designed to be safe and reliable, unexpected issues may occur during file operations.
+
 ## ✨ Features
 
 ### 🎯 Core Functionality
