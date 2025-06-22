@@ -1,0 +1,19 @@
+name: TODO to Issue
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  todo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: TODO to Issue
+        uses: alstr/todo-to-issue-action@v5.1.12
+        with:
+          LABEL: feature
+          PROJECT: TaskMover
+          MILESTONE: Taskmover MS.2
+          CUSTOM_KEYWORDS: 'TODO,- [ ]'
