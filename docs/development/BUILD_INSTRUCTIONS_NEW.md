@@ -1,13 +1,11 @@
-# TaskMover v3.0.0 - Build Instructions
+# TaskMover - Build Instructions
 
-**Author:** Dino corp  
 **Application:** TaskMover  
-**Version:** 3.0.0  
-**Description:** Automated File Organization Tool
+**Description:** Window Management and Organization Tool
 
 ## Overview
 
-This guide explains how to build a standalone executable for TaskMover v3.0.0 using PyInstaller. The resulting .exe file can be distributed to users without requiring Python to be installed.
+This guide explains how to build a standalone executable for TaskMover using PyInstaller. The resulting .exe file can be distributed to users without requiring Python to be installed.
 
 ## Prerequisites
 
@@ -62,7 +60,7 @@ rmdir /s build\__pycache__
 ### Step 3: Build Executable
 ```bash
 # Use the PyInstaller spec file
-pyinstaller build/TaskMover_v3.spec
+pyinstaller .github/TaskMover.spec
 ```
 
 ## Build Configuration
@@ -172,7 +170,7 @@ First launch may be slower as Windows extracts temporary files. Subsequent launc
 3. Run from command prompt to see console output:
    ```bash
    # Build with console visible for debugging
-   pyinstaller --console build/TaskMover_v3.spec
+   pyinstaller --console .github/TaskMover.spec
    ```
 
 ## Advanced Configuration
@@ -180,7 +178,7 @@ First launch may be slower as Windows extracts temporary files. Subsequent launc
 ### Custom Build Options
 
 #### Include Additional Files
-Edit `build/TaskMover_v3.spec` and add files to the `datas` section:
+Edit `.github/TaskMover.spec` and add files to the `datas` section:
 ```python
 datas=[
     ('path/to/file', 'destination/in/exe'),

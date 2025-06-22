@@ -6,7 +6,7 @@ Clean, independent components with no legacy dependencies.
 import tkinter as tk
 from tkinter import ttk, messagebox
 import ttkbootstrap as ttkb
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, Union
 
 from ..core.utils import center_window_on_parent
 
@@ -74,7 +74,7 @@ class Tooltip:
 class SimpleDialog:
     """Base class for simple dialogs."""
     
-    def __init__(self, parent: tk.Widget, title: str, width: int = 400, height: int = 300, 
+    def __init__(self, parent: Union[tk.Widget, tk.Tk], title: str, width: int = 400, height: int = 300, 
                  proportional: bool = False, width_ratio: float = 0.4, height_ratio: float = 0.5):
         self.result = None
         self.parent = parent

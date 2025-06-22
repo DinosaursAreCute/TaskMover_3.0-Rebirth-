@@ -1,6 +1,8 @@
-# TaskMover Redesigned - Build Instructions
+# TaskMover Redesigned - Build Instructions (Legacy)
 
-## Creating an Executable (.exe) for TaskMover v3.0.0
+> **Note:** For updated build instructions, please refer to [BUILD_INSTRUCTIONS_NEW.md](BUILD_INSTRUCTIONS_NEW.md)
+
+## Creating an Executable (.exe) for TaskMover
 
 This guide will help you create a standalone executable file for the redesigned TaskMover application using PyInstaller.
 
@@ -42,7 +44,7 @@ Use the provided PyInstaller spec file for better control:
 cd TaskMover
 
 # Build using the spec file
-pyinstaller build/TaskMover_v3.spec
+pyinstaller .github/TaskMover.spec
 ```
 
 ### Method 3: Custom Build Script
@@ -178,7 +180,7 @@ The executable includes version information:
 
 For automated builds, see:
 - `build/build_exe.py` - Python build script
-- `build/TaskMover_v3.spec` - PyInstaller configuration
+- `.github/TaskMover.spec` - PyInstaller configuration
 - `build/version_info.txt` - Version information file
 
 ## Performance Notes

@@ -6,7 +6,7 @@ Clean, independent settings dialog without legacy dependencies.
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, colorchooser
 import ttkbootstrap as ttkb
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, Union
 import os
 
 from .components import SimpleDialog, Tooltip
@@ -15,7 +15,7 @@ from .components import SimpleDialog, Tooltip
 class SettingsDialog(SimpleDialog):
     """Modern settings dialog."""
     
-    def __init__(self, parent: tk.Widget, settings: Dict[str, Any], 
+    def __init__(self, parent: Union[tk.Widget, tk.Tk], settings: Dict[str, Any], 
                  save_callback: Callable, logger):
         self.settings = settings.copy()  # Work with a copy
         self.save_callback = save_callback
@@ -152,8 +152,8 @@ class SettingsDialog(SimpleDialog):
                 # Apply theme to current window
                 style = ttkb.Style()
                 style.theme_use(theme)
-                messagebox.showinfo("Theme Preview", f"Theme '{theme}' applied. "
-                                   "Click OK in the settings dialog to save this theme.")
+                #messagebox.showinfo("Theme Preview", f"Theme '{theme}' applied. " DO NOT REMOVE THIS COMMENT, this is a debug feature
+                #                   "Click OK in the settings dialog to save this theme.")
         except Exception as e:
             messagebox.showerror("Theme Error", f"Could not apply theme: {str(e)}")
     
@@ -194,7 +194,7 @@ class SettingsDialog(SimpleDialog):
                 messagebox.showerror("Save Error", f"Could not save settings: {str(e)}")
 
 
-def open_settings_window(parent: tk.Widget, settings: Dict[str, Any], 
+def open_settings_window(parent: Union[tk.Widget, tk.Tk], settings: Dict[str, Any], 
                         save_callback: Callable, logger):
     """Open the settings dialog."""
     dialog = SettingsDialog(parent, settings, save_callback, logger)

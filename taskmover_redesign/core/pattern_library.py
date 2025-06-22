@@ -295,7 +295,10 @@ class PatternLibrary:
         
         for pattern_data in default_patterns:
             try:
-                self.create_pattern(**pattern_data)
+                # Fix parameter name from 'type' to 'pattern_type'
+                pattern_params = pattern_data.copy()
+                pattern_params['pattern_type'] = pattern_params.pop('type')
+                self.create_pattern(**pattern_params)
             except Exception as e:
                 self.logger.warning(f"Failed to create default pattern {pattern_data['name']}: {e}")
         

@@ -25,7 +25,7 @@ def test_imports():
         
         print("Testing UI imports...")
         from taskmover_redesign.ui import (
-            Tooltip, ProgressDialog, ConfirmDialog, RuleEditor, RuleListWidget, SettingsDialog
+            Tooltip, ProgressDialog, ConfirmDialog, RuleEditor, SettingsDialog
         )
         print("✓ UI imports successful")
         

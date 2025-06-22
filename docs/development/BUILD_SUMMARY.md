@@ -2,7 +2,15 @@
 
 ## Overview
 
-This document provides a comprehensive overview of the TaskMover v3.0 build system, including all build components, processes, and best practices.
+This document provides a comprehensive overview of the updated TaskMover build system, including all build components, processes, and best practices.
+
+## Recent Updates
+
+- Added `.github/TaskMover.spec` as the primary PyInstaller spec file
+- Updated GitHub Actions workflow to use the new spec file
+- Created improved build scripts in the `build` directory
+- Added comprehensive build instructions in `.github/BUILD_INSTRUCTIONS.md`
+- Added version information file template
 
 ## Build System Architecture
 
@@ -27,7 +35,7 @@ This document provides a comprehensive overview of the TaskMover v3.0 build syst
   - Development-focused build option
 
 #### 2. Configuration Files
-- **`build/TaskMover_v3.spec`** - PyInstaller specification
+- **`.github/TaskMover.spec`** - PyInstaller specification
   - Optimized for minimal executable size
   - Includes all required modules and dependencies
   - Configured for Windows executable metadata

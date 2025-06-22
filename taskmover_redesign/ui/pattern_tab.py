@@ -5,8 +5,9 @@ Provides comprehensive pattern management interface.
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+import tkinter.simpledialog as simpledialog
 import ttkbootstrap as ttkb
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional, Callable, Union, cast
 import logging
 
 from .components import SimpleDialog, Tooltip, TextInputDialog, ConfirmDialog
@@ -34,14 +35,17 @@ class PatternEditorDialog(SimpleDialog):
         self.test_results_text = None
         
         # Load existing pattern data
-        if self.is_editing:
+        if self.is_editing and pattern is not None:
             self.name_var.set(pattern.name)
             self.pattern_var.set(pattern.pattern)
             self.type_var.set(pattern.type)
             self.description_var.set(pattern.description)
             self.tags_var.set(", ".join(pattern.tags or []))
-        
-        title = f"Edit Pattern: {pattern.name}" if self.is_editing else "Create New Pattern"
+            pattern_name = pattern.name
+        else:
+            pattern_name = ""
+            
+        title = f"Edit Pattern: {pattern_name}" if self.is_editing else "Create New Pattern"
         super().__init__(parent, title, 600, 500)
     
     def create_content(self):
@@ -112,8 +116,10 @@ class PatternEditorDialog(SimpleDialog):
         self.examples_text.pack(side="left", fill="both", expand=True)
         examples_scroll.pack(side="right", fill="y")
         
-        if self.is_editing and self.pattern.examples:
-            self.examples_text.insert("1.0", "\n".join(self.pattern.examples))
+        if self.is_editing and self.pattern is not None:
+            examples = getattr(self.pattern, "examples", None) or []
+            if self.examples_text is not None:
+                self.examples_text.insert("1.0", "\n".join(examples))
         
         Tooltip(self.examples_text, "Enter example filenames (one per line) that should match this pattern")
         
@@ -142,7 +148,7 @@ class PatternEditorDialog(SimpleDialog):
         cancel_btn.pack(side="right", padx=(5, 0))
         
         save_btn = ttkb.Button(button_frame, text="Save Pattern", command=self.ok, 
-                              bootstyle="success")
+                              style="success")  # Changed bootstyle to style
         save_btn.pack(side="right")
     
     def on_pattern_changed(self, event=None):
@@ -150,6 +156,9 @@ class PatternEditorDialog(SimpleDialog):
         pattern_str = self.pattern_var.get().strip()
         pattern_type = self.type_var.get()
         
+        if not self.test_results_text:
+            return
+            
         if pattern_str:
             is_valid, error_msg = self.pattern_library.validate_pattern(pattern_str, pattern_type)
             if is_valid:
@@ -174,6 +183,15 @@ class PatternEditorDialog(SimpleDialog):
         
         if not pattern_str:
             messagebox.showwarning("No Pattern", "Please enter a pattern to test")
+            return
+        
+        # Safety checks for UI elements
+        if not self.examples_text:
+            messagebox.showerror("Error", "Example text widget not initialized")
+            return
+            
+        if not self.test_results_text:
+            messagebox.showerror("Error", "Test results widget not initialized")
             return
         
         # Get examples from text widget
@@ -216,7 +234,9 @@ class PatternEditorDialog(SimpleDialog):
         
         # Check for duplicate names (unless editing the same pattern)
         existing_pattern = self.pattern_library.get_pattern_by_name(name)
-        if existing_pattern and (not self.is_editing or existing_pattern.id != self.pattern.id):
+        pattern_id = getattr(self.pattern, "id", None) if self.pattern else None
+        
+        if existing_pattern and (not self.is_editing or existing_pattern.id != pattern_id):
             messagebox.showerror("Validation Error", f"A pattern named '{name}' already exists")
             return False
         
@@ -230,8 +250,10 @@ class PatternEditorDialog(SimpleDialog):
     
     def get_result(self) -> Dict[str, Any]:
         """Get the pattern data from the form."""
-        examples_text = self.examples_text.get("1.0", tk.END).strip()
-        examples = [line.strip() for line in examples_text.split('\n') if line.strip()]
+        examples = []
+        if self.examples_text:
+            examples_text = self.examples_text.get("1.0", tk.END).strip()
+            examples = [line.strip() for line in examples_text.split('\n') if line.strip()]
         
         tags_text = self.tags_var.get().strip()
         tags = [tag.strip() for tag in tags_text.split(',') if tag.strip()]
@@ -246,52 +268,56 @@ class PatternEditorDialog(SimpleDialog):
         }
 
 
-class PatternTestDialog(SimpleDialog):
+class PatternTestDialog:
     """Dialog for testing patterns against filenames."""
     
-    def __init__(self, parent: tk.Widget, pattern_library: PatternLibrary):
+    def __init__(self, parent, pattern_library):
+        self.parent = parent
         self.pattern_library = pattern_library
+        self.dialog = None
+        
+        # Initialize UI elements
         self.test_files_text = None
         self.results_tree = None
-        
-        super().__init__(parent, "Test Patterns", 700, 500)
     
-    def create_content(self):
-        """Create the pattern testing interface."""
+    def show(self):
+        """Show the dialog."""
+        self.dialog = tk.Toplevel(self.parent)
+        self.dialog.title("Test Patterns")
+        self.dialog.transient(self.parent)
+        self.dialog.grab_set()
+        
+        # Create the main frame
+        self.main_frame = ttkb.Frame(self.dialog, padding=15)
+        self.main_frame.pack(fill="both", expand=True)
+        
         # Instructions
-        info_frame = ttkb.Frame(self.main_frame)
-        info_frame.pack(fill="x", pady=(0, 10))
+        ttkb.Label(self.main_frame, text="Enter filenames to test against all patterns:",
+                  wraplength=400, justify="left").pack(anchor="w", pady=(0, 5))
         
-        info_label = ttkb.Label(info_frame, 
-                               text="Enter filenames to test against all patterns (one per line):",
-                               font=("", 10))
-        info_label.pack(anchor="w")
+        # Files text area
+        files_frame = ttkb.Frame(self.main_frame)
+        files_frame.pack(fill="both", expand=True, pady=5)
         
-        # Test files input
-        files_frame = ttkb.LabelFrame(self.main_frame, text="Test Filenames", padding=5)
-        files_frame.pack(fill="x", pady=(0, 10))
+        v_scroll = ttk.Scrollbar(files_frame, orient="vertical")
         
-        self.test_files_text = tk.Text(files_frame, height=6, font=("Consolas", 9))
-        files_scroll = ttkb.Scrollbar(files_frame, orient="vertical", 
-                                     command=self.test_files_text.yview)
-        self.test_files_text.configure(yscrollcommand=files_scroll.set)
+        self.test_files_text = tk.Text(files_frame, height=5, wrap="none", 
+                                     yscrollcommand=v_scroll.set)
+        v_scroll.config(command=self.test_files_text.yview)
         
         self.test_files_text.pack(side="left", fill="both", expand=True)
-        files_scroll.pack(side="right", fill="y")
+        v_scroll.pack(side="right", fill="y")
         
-        # Add some sample filenames
-        sample_files = [
-            "document.pdf", "photo.jpg", "script.py", "data.csv",
-            "backup.zip", "app.log", "style.css", "index.html"
-        ]
-        self.test_files_text.insert("1.0", "\n".join(sample_files))
+        # Default test files
+        default_files = "test.txt\nexample.py\ndata.csv\nimage.jpg\ndocument.pdf\nsample.docx"
+        self.test_files_text.insert("1.0", default_files)
         
         # Test button
         test_btn_frame = ttkb.Frame(self.main_frame)
         test_btn_frame.pack(fill="x", pady=(0, 10))
         
         test_btn = ttkb.Button(test_btn_frame, text="Run Tests", 
-                              command=self.run_tests, bootstyle="primary")
+                              command=self.run_tests, style="primary")
         test_btn.pack()
         
         # Results
@@ -302,31 +328,48 @@ class PatternTestDialog(SimpleDialog):
         columns = ("Pattern", "Type", "Matches", "Filenames")
         self.results_tree = ttk.Treeview(results_frame, columns=columns, show="headings", height=10)
         
-        for col in columns:
-            self.results_tree.heading(col, text=col)
+        # Configure columns
+        self.results_tree.heading("Pattern", text="Pattern")
+        self.results_tree.heading("Type", text="Type")
+        self.results_tree.heading("Matches", text="Matches")
+        self.results_tree.heading("Filenames", text="Matching Files")
         
         self.results_tree.column("Pattern", width=150)
-        self.results_tree.column("Type", width=60)
-        self.results_tree.column("Matches", width=60)
-        self.results_tree.column("Filenames", width=300)
+        self.results_tree.column("Type", width=80)
+        self.results_tree.column("Matches", width=80, anchor="center")
+        self.results_tree.column("Filenames", width=250)
         
-        results_scroll = ttkb.Scrollbar(results_frame, orient="vertical", 
-                                       command=self.results_tree.yview)
-        self.results_tree.configure(yscrollcommand=results_scroll.set)
+        # Scrollbars
+        tree_v_scroll = ttk.Scrollbar(results_frame, orient="vertical", command=self.results_tree.yview)
+        tree_h_scroll = ttk.Scrollbar(results_frame, orient="horizontal", command=self.results_tree.xview)
         
-        self.results_tree.pack(side="left", fill="both", expand=True)
-        results_scroll.pack(side="right", fill="y")
-    
-    def create_buttons(self):
-        """Create Close button."""
+        self.results_tree.configure(yscrollcommand=tree_v_scroll.set, xscrollcommand=tree_h_scroll.set)
+        
+        self.results_tree.grid(row=0, column=0, sticky="nsew")
+        tree_v_scroll.grid(row=0, column=1, sticky="ns")
+        tree_h_scroll.grid(row=1, column=0, sticky="ew")
+        
+        results_frame.grid_rowconfigure(0, weight=1)
+        results_frame.grid_columnconfigure(0, weight=1)
+        
+        # Close button
         button_frame = ttkb.Frame(self.main_frame)
         button_frame.pack(fill="x", pady=(15, 0))
         
         close_btn = ttkb.Button(button_frame, text="Close", command=self.cancel)
         close_btn.pack(side="right")
-    
+        
+        # Center dialog
+        center_window_on_parent(self.dialog, self.parent, proportional=True, width_ratio=0.7, height_ratio=0.7)
+        
+        return self.dialog  # Added return value
+        
     def run_tests(self):
         """Run pattern tests."""
+        if not self.test_files_text:
+            messagebox.showwarning("Error", "Dialog not fully initialized")
+            return
+            
         # Get test filenames
         files_text = self.test_files_text.get("1.0", tk.END).strip()
         if not files_text:
@@ -336,25 +379,35 @@ class PatternTestDialog(SimpleDialog):
         test_files = [line.strip() for line in files_text.split('\n') if line.strip()]
         
         # Clear previous results
-        for item in self.results_tree.get_children():
-            self.results_tree.delete(item)
+        if self.results_tree:
+            for item in self.results_tree.get_children():
+                self.results_tree.delete(item)
+        else:
+            messagebox.showwarning("Error", "Results display not initialized")
+            return
         
         # Test each pattern
         patterns = self.pattern_library.get_all_patterns()
         
         for pattern in patterns:
-            matches = self.pattern_library.test_pattern(pattern.id, test_files)
-            
-            match_count = len(matches)
-            matches_str = ", ".join(matches) if matches else "No matches"
-            
-            # Insert result
-            self.results_tree.insert("", "end", values=(
-                pattern.name,
-                pattern.type,
-                f"{match_count}/{len(test_files)}",
-                matches_str
-            ))
+            if pattern:
+                matches = self.pattern_library.test_pattern(pattern.id, test_files)
+                
+                match_count = len(matches)
+                if match_count > 0:
+                    matches_str = ", ".join(matches)
+                    if self.results_tree:
+                        self.results_tree.insert("", "end", values=(
+                            pattern.name,
+                            pattern.type,
+                            match_count,
+                            matches_str
+                        ))
+        
+    def cancel(self):
+        """Close the dialog."""
+        if self.dialog:
+            self.dialog.destroy()
 
 
 class PatternManagementTab:
@@ -372,8 +425,7 @@ class PatternManagementTab:
         
         # UI components
         self.search_var = tk.StringVar()
-        self.pattern_tree = None
-        
+        self.pattern_tree = None  # Initialize pattern_tree here
         self.create_ui()
         self.refresh_pattern_list()
     
@@ -419,21 +471,27 @@ class PatternManagementTab:
         list_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
         # Pattern tree with columns
-        columns = ("Name", "Type", "Pattern", "Usage", "Description")
+        columns = ("ID", "Name", "Type", "Pattern", "Usage", "Description")
         self.pattern_tree = ttk.Treeview(list_frame, columns=columns, show="headings", height=15)
         
-        for col in columns:
+        # Hide ID column
+        self.pattern_tree.column("ID", width=0, stretch=False)
+        self.pattern_tree.heading("ID", text="ID")
+    
+        for col in ["Name", "Type", "Pattern", "Usage", "Description"]:
             self.pattern_tree.heading(col, text=col)
         
+        # Configure column widths
         self.pattern_tree.column("Name", width=150)
-        self.pattern_tree.column("Type", width=60)
-        self.pattern_tree.column("Pattern", width=200)
-        self.pattern_tree.column("Usage", width=80)
-        self.pattern_tree.column("Description", width=250)
+        self.pattern_tree.column("Type", width=80)
+        self.pattern_tree.column("Pattern", width=250)
+        self.pattern_tree.column("Usage", width=60, anchor="center")
+        self.pattern_tree.column("Description", width=200)
+    
+        # Add scrollbars
+        v_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self.pattern_tree.yview)
+        h_scroll = ttk.Scrollbar(list_frame, orient="horizontal", command=self.pattern_tree.xview)
         
-        # Scrollbars
-        v_scroll = ttkb.Scrollbar(list_frame, orient="vertical", command=self.pattern_tree.yview)
-        h_scroll = ttkb.Scrollbar(list_frame, orient="horizontal", command=self.pattern_tree.xview)
         self.pattern_tree.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
         
         # Pack tree and scrollbars
@@ -449,20 +507,27 @@ class PatternManagementTab:
         
         # Context menu
         self.create_context_menu()
+        
+        # Refresh the list
+        self.refresh_pattern_list()
     
     def create_context_menu(self):
         """Create right-click context menu."""
-        self.context_menu = tk.Menu(self.pattern_tree, tearoff=0)
+        self.context_menu = tk.Menu(self.frame, tearoff=0)
         self.context_menu.add_command(label="Edit", command=self.edit_pattern)
         self.context_menu.add_command(label="Delete", command=self.delete_pattern)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Show Usage", command=self.show_pattern_usage)
         self.context_menu.add_command(label="Test Pattern", command=self.test_selected_pattern)
         
-        self.pattern_tree.bind("<Button-3>", self.show_context_menu)
-    
+        if self.pattern_tree:
+            self.pattern_tree.bind("<Button-3>", self.show_context_menu)
+
     def show_context_menu(self, event):
         """Show context menu on right-click."""
+        if not self.pattern_tree:
+            return
+            
         item = self.pattern_tree.identify('item', event.x, event.y)
         if item:
             self.pattern_tree.selection_set(item)
@@ -472,46 +537,54 @@ class PatternManagementTab:
         """Handle double-click on pattern."""
         self.edit_pattern()
     
+    def get_selected_pattern_id(self):
+        """Get the ID of the selected pattern."""
+        if not self.pattern_tree:
+            return None
+        
+        selections = self.pattern_tree.selection()
+        if not selections:
+            return None
+        
+        item = selections[0]
+        values = self.pattern_tree.item(item, 'values')
+        if not values or len(values) < 1:
+            return None
+        
+        return values[0]  # First column contains the ID
+    
     def refresh_pattern_list(self):
-        """Refresh the pattern list display."""
-        # Clear existing items
+        """Refresh the pattern list."""
+        if not self.pattern_tree:
+            return
+            
+        # Clear list
         for item in self.pattern_tree.get_children():
             self.pattern_tree.delete(item)
-        
-        # Get patterns (filtered if search query exists)
-        search_query = self.search_var.get().strip()
-        if search_query:
-            patterns = self.pattern_library.search_patterns(search_query)
-        else:
-            patterns = self.pattern_library.get_all_patterns()
-        
-        # Populate tree
+    
+        # Get all patterns
+        patterns = self.pattern_library.get_all_patterns()
+    
+        # Populate list
         for pattern in patterns:
-            # Get usage count
-            usage = self.rule_pattern_manager.get_pattern_usage(pattern.id)
-            usage_count = len(usage)
-            
-            self.pattern_tree.insert("", "end", values=(
-                pattern.name,
-                pattern.type,
-                pattern.pattern,
-                f"{usage_count} rules",
-                pattern.description
-            ), tags=(pattern.id,))
+            if pattern:
+                # Get usage count
+                usage = self.rule_pattern_manager.get_pattern_usage(pattern.id)
+                usage_count = len(usage) if usage else 0
+                
+                # Add to tree
+                self.pattern_tree.insert("", "end", values=(
+                    pattern.id,
+                    pattern.name,
+                    pattern.type,
+                    pattern.pattern,
+                    usage_count,
+                    pattern.description or ""
+                ))
     
     def filter_patterns(self, *args):
         """Filter patterns based on search query."""
         self.refresh_pattern_list()
-    
-    def get_selected_pattern_id(self) -> Optional[str]:
-        """Get the ID of the currently selected pattern."""
-        selection = self.pattern_tree.selection()
-        if not selection:
-            return None
-        
-        item = selection[0]
-        tags = self.pattern_tree.item(item, "tags")
-        return tags[0] if tags else None
     
     def create_pattern(self):
         """Create a new pattern."""
@@ -561,27 +634,20 @@ class PatternManagementTab:
             messagebox.showerror("Error", "Pattern not found")
             return
         
-        # Check usage
-        can_delete, usage = self.rule_pattern_manager.can_delete_pattern(pattern_id)
-        
-        if not can_delete:
+        # Check for pattern usage
+        usage = self.rule_pattern_manager.get_pattern_usage(pattern_id)
+        if usage:
             usage_str = "\n".join([f"  • {u['ruleset']} / {u['rule_name']}" for u in usage])
-            message = (f"Pattern '{pattern.name}' is used by {len(usage)} rule(s):\n\n{usage_str}\n\n"
-                      "Do you want to remove it from all rules and delete it?")
-            
-            if not messagebox.askyesno("Pattern In Use", message):
+            msg = f"Pattern '{pattern.name}' is used by {len(usage)} rule(s):\n\n{usage_str}\n\nDelete anyway?"
+            if not messagebox.askyesno("Pattern in Use", msg):
                 return
-            
-            # Remove from all rules
-            removed_count = self.rule_pattern_manager.remove_pattern_from_rules(pattern_id)
-            self.logger.info(f"Removed pattern from {removed_count} rules")
         else:
-            if not messagebox.askyesno("Confirm Delete", 
+            if pattern and not messagebox.askyesno("Confirm Delete", 
                                       f"Are you sure you want to delete pattern '{pattern.name}'?"):
                 return
         
         # Delete pattern
-        if self.pattern_library.delete_pattern(pattern_id):
+        if pattern and self.pattern_library.delete_pattern(pattern_id):
             self.refresh_pattern_list()
             messagebox.showinfo("Success", f"Pattern '{pattern.name}' deleted successfully")
         else:
@@ -595,6 +661,10 @@ class PatternManagementTab:
             return
         
         pattern = self.pattern_library.get_pattern(pattern_id)
+        if not pattern:
+            messagebox.showerror("Error", "Pattern not found")
+            return
+            
         usage = self.rule_pattern_manager.get_pattern_usage(pattern_id)
         
         if not usage:
@@ -612,7 +682,7 @@ class PatternManagementTab:
             return
         
         # Simple test dialog
-        test_files = tk.simpledialog.askstring(
+        test_files = simpledialog.askstring(
             "Test Pattern",
             "Enter filenames to test (separated by commas):",
             initialvalue="test.txt, example.py, data.csv, image.jpg"
@@ -623,6 +693,10 @@ class PatternManagementTab:
             matches = self.pattern_library.test_pattern(pattern_id, filenames)
             
             pattern = self.pattern_library.get_pattern(pattern_id)
+            if not pattern:
+                messagebox.showerror("Error", "Pattern not found")
+                return
+            
             if matches:
                 matches_str = "\n".join([f"  • {match}" for match in matches])
                 messagebox.showinfo("Test Results", 

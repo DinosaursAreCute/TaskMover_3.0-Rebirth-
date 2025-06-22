@@ -11,6 +11,12 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import LEFT, RIGHT, TOP, BOTTOM, X, Y, BOTH, CENTER, VERTICAL
 import logging
+import threading
+import datetime
+import fnmatch
+import json
+import yaml
+import uuid
 
 # Import redesigned modules
 from .core import (
@@ -19,10 +25,12 @@ from .core import (
     get_sorted_rule_keys, move_rule_priority, start_organization,
     center_window, center_window_on_parent, configure_logger, setup_logging
 )
+from .core.pattern_library import PatternLibrary
+from .core.rule_pattern_manager import RulePatternManager
 from .ui.components import Tooltip, ProgressDialog, ConfirmDialog
 from .ui.rule_components import add_rule_button, edit_rule, enable_all_rules, disable_all_rules
 from .ui.settings_components import open_settings_window
-# from .ui.pattern_manager import PatternLibraryManager, PatternManagerTab
+from .ui.pattern_tab import PatternManagementTab
 
 class TaskMoverApp:
     def __init__(self):
@@ -35,19 +43,20 @@ class TaskMoverApp:
         
         # Use proportional sizing for main window (60% of screen width, 70% of screen height)
         center_window(self.root, proportional=True, width_ratio=0.6, height_ratio=0.7)
-          # Load configuration
+        # Load configuration
         self.base_directory = os.path.expanduser("~/.taskmover")
         self.config_directory = os.path.join(self.base_directory, "config")
         os.makedirs(self.config_directory, exist_ok=True)
         
         # Load settings
         self.settings = load_settings(self.logger)
-        
         # Initialize ruleset manager and load current ruleset
         self.ruleset_manager = RulesetManager(self.config_directory)
         self.rules = self.ruleset_manager.load_ruleset_rules(self.ruleset_manager.current_ruleset)
-          # Initialize pattern library
-        # self.pattern_library = PatternLibraryManager(self.config_directory)
+        
+        # Initialize pattern library and rule-pattern manager
+        self.pattern_library = PatternLibrary(self.config_directory)
+        self.rule_pattern_manager = RulePatternManager(self.ruleset_manager, self.pattern_library)
         
         # Apply theme from settings
         if "theme" in self.settings:
@@ -206,15 +215,16 @@ class TaskMoverApp:
         # Create notebook for tabbed interface
         self.notebook = ttkb.Notebook(self.root)
         self.notebook.pack(fill=BOTH, expand=True, padx=10, pady=(0, 10))
-        
         # Rules tab
         rules_frame = ttkb.Frame(self.notebook)
         self.notebook.add(rules_frame, text="📋 Rules")
         
         self.create_rules_list(rules_frame)
-          # Pattern Manager tab - temporarily disabled
-        # self.pattern_manager_tab = PatternManagerTab(self.notebook, self.pattern_library)
-          # Recent Activity tab  
+        
+        # Pattern Management tab
+        self.pattern_tab = PatternManagementTab(self.notebook, self.pattern_library, self.rule_pattern_manager)
+        
+        # Recent Activity tab  
         activity_frame = ttkb.Frame(self.notebook)
         self.notebook.add(activity_frame, text="📊 Recent Activity")
         
@@ -245,8 +255,7 @@ class TaskMoverApp:
         button_padding = (3, 0)
         
         # New ruleset button
-        new_ruleset_btn = ttkb.Button(ruleset_frame, text="+ New", style=button_style, 
-                                     command=self.create_new_ruleset)
+        new_ruleset_btn = ttkb.Button(ruleset_frame, text="+ New", style=button_style, command=self.create_new_ruleset)
         new_ruleset_btn.pack(side=LEFT, padx=button_padding)
         Tooltip(new_ruleset_btn, "Create a new ruleset")
         
@@ -269,8 +278,7 @@ class TaskMoverApp:
         Tooltip(rename_btn, "Rename current ruleset")
         
         # Delete ruleset button
-        delete_btn = ttkb.Button(ruleset_frame, text="Delete", style="outline.Danger.Toolbutton",
-                               command=self.delete_ruleset)
+        delete_btn = ttkb.Button(ruleset_frame, text="Delete", style="outline.Danger.Toolbutton", command=self.delete_ruleset)
         delete_btn.pack(side=LEFT, padx=button_padding)
         Tooltip(delete_btn, "Delete current ruleset")
         
@@ -444,14 +452,12 @@ class TaskMoverApp:
             priority = rule.get("priority", 0) + 1  # Display 1-based priority
             patterns_text = ", ".join(rule.get("patterns", []))
             destination = rule.get("path", "")
-            
             self.rules_tree.insert("", tk.END, values=(
                 active_text,
                 priority,
                 rule_key,
                 patterns_text,
                 destination            ))
-            
         self.update_status_display()
         self.update_status_bar()
     
@@ -471,7 +477,10 @@ class TaskMoverApp:
         def refresh_callback():
             self.refresh_rules_display()
             
-        add_rule_button(self.rules, self.config_directory, None, self.logger, self.root, refresh_callback, None)
+        add_rule_button(self.root, self.rules, self.config_directory, refresh_callback,  # type: ignore
+                       pattern_library=self.pattern_library,
+                       rule_pattern_manager=self.rule_pattern_manager,
+                       ruleset_name=self.ruleset_manager.current_ruleset)
         
     def edit_selected_rule(self):
         """Edit the selected rule"""
@@ -480,8 +489,13 @@ class TaskMoverApp:
             messagebox.showwarning("No Selection", "Please select a rule to edit.")
             return
             
-        edit_rule(rule_key, self.rules, self.config_directory, self.logger, None, None)
-        self.refresh_rules_display()
+        def refresh_callback():
+            self.refresh_rules_display()
+            
+        edit_rule(self.root, self.rules, self.config_directory, rule_key, refresh_callback,  # type: ignore
+                 pattern_library=self.pattern_library,
+                 rule_pattern_manager=self.rule_pattern_manager,
+                 ruleset_name=self.ruleset_manager.current_ruleset)
         
     def duplicate_rule(self):
         """Duplicate the selected rule"""
@@ -511,7 +525,6 @@ class TaskMoverApp:
             
         self.rules[new_name] = original_rule
         self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
-        
         self.refresh_rules_display()
         self.logger.info(f"Duplicated rule: {rule_key} → {new_name}")
         
@@ -540,19 +553,17 @@ class TaskMoverApp:
         
     def enable_all_rules(self):
         """Enable all rules"""
-        # Create a wrapper callback that handles the legacy signature
         def refresh_callback():
             self.refresh_rules_display()
             
-        enable_all_rules(self.rules, self.config_directory, None, self.logger, refresh_callback)
+        enable_all_rules(self.rules, refresh_callback)
         
     def disable_all_rules(self):
         """Disable all rules"""
-        # Create a wrapper callback that handles the legacy signature
         def refresh_callback():
             self.refresh_rules_display()
             
-        disable_all_rules(self.rules, self.config_directory, None, self.logger, refresh_callback)
+        disable_all_rules(self.rules, refresh_callback)
         
     def move_rule_up(self):
         """Move selected rule up in priority"""
@@ -1025,7 +1036,7 @@ class TaskMoverApp:
                 except Exception as e:
                     self.logger.warning(f"Could not apply theme {settings['theme']}: {e}")
         
-        open_settings_window(self.root, self.settings, save_settings_wrapper, self.logger)
+        open_settings_window(self.root, self.settings, save_settings_wrapper, self.logger)  # type: ignore
         
     def open_developer_log(self):
         """Open developer log window"""
@@ -1110,7 +1121,7 @@ Licensed under MIT License"""
         about_dialog.grab_set()
         
         # Use proportional sizing for about dialog (40% of parent width, 50% of parent height)
-        center_window_on_parent(about_dialog, self.root, proportional=True, width_ratio=0.4, height_ratio=0.5)
+        center_window_on_parent(about_dialog, self.root, proportional=True, width_ratio=0.4, height_ratio=0.5)  # type: ignore
         
         main_frame = ttkb.Frame(about_dialog, padding=20)
         main_frame.pack(fill="both", expand=True)

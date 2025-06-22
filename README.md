@@ -9,9 +9,6 @@
 
 **TaskMover** is a powerful, modern file organization tool that automatically organizes your files based on customizable rules and patterns. Say goodbye to cluttered folders and hello to an organized digital life!
 
-> ⚠️ **Warning**  
-> Ensure you have a backup of your files before running TaskMover. While the application is designed to be safe and reliable, unexpected issues may occur during file operations.
-
 ## ✨ Features
 
 ### 🎯 Core Functionality
@@ -230,6 +227,24 @@ We welcome contributions! Here's how to get started:
    ```bash
    python -m pytest taskmover_redesign/tests/
    ```
+
+### Building the Application
+
+TaskMover can be built into a standalone executable for distribution:
+
+1. **Follow the build instructions:**
+   ```bash
+   # Quick build using the new spec file
+   pyinstaller .github/TaskMover.spec
+   ```
+
+2. **Alternative build methods:**
+   - Use the provided build script: `cd build && build.bat`
+   - Use GitHub Actions workflow for automated builds
+   - See [Build Instructions](.github/BUILD_INSTRUCTIONS.md) for complete details
+
+3. **Find your executable:**
+   The built application will be available in the `dist` directory
 
 ### Making Changes
 

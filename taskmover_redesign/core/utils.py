@@ -6,12 +6,12 @@ Streamlined utility functions with better organization.
 import tkinter as tk
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Any, Tuple
 
 logger = logging.getLogger("TaskMover.Utils")
 
 
-def get_screen_dimensions(window: tk.Tk | tk.Toplevel) -> tuple[int, int]:
+def get_screen_dimensions(window: Union[tk.Tk, tk.Toplevel]) -> tuple[int, int]:
     """Get screen dimensions."""
     return window.winfo_screenwidth(), window.winfo_screenheight()
 
@@ -36,7 +36,27 @@ def calculate_proportional_size(screen_width: int, screen_height: int,
     return width, height
 
 
-def center_window(window: tk.Tk | tk.Toplevel, 
+def calculate_window_dimensions(screen_width: int, screen_height: int, width: Optional[int], height: Optional[int],
+                              proportional: bool, width_ratio: float, height_ratio: float) -> Tuple[int, int]:
+    """Calculate window dimensions based on proportional or fixed sizing."""
+    if proportional or (width is None and height is None):
+        width = int(screen_width * width_ratio)
+        height = int(screen_height * height_ratio)
+    if width is None:
+        width = screen_width
+    if height is None:
+        height = screen_height
+    return width, height
+
+
+def ensure_within_screen(x: int, y: int, width: int, height: int, screen_width: int, screen_height: int) -> Tuple[int, int]:
+    """Ensure the window position is within screen bounds."""
+    x = max(0, min(x, screen_width - width))
+    y = max(0, min(y, screen_height - height))
+    return x, y
+
+
+def center_window(window: Union[tk.Tk, tk.Toplevel], 
                  width: Optional[int] = None, 
                  height: Optional[int] = None,
                  proportional: bool = False,
@@ -46,36 +66,15 @@ def center_window(window: tk.Tk | tk.Toplevel,
     # Get screen dimensions
     screen_width, screen_height = get_screen_dimensions(window)
     
-    # Calculate window dimensions
-    if proportional or (width is None and height is None):
-        # If proportional is requested or both width and height are None, use proportional sizing
-        width, height = calculate_proportional_size(
-            screen_width, screen_height, width_ratio, height_ratio
-        )
-    elif width is None:
-        # If only width is None, use requested height and calculate width from window's requested width
-        window.update_idletasks()
-        width = window.winfo_reqwidth()
-    elif height is None:
-        # If only height is None, use requested width and calculate height from window's requested height
-        window.update_idletasks()
-        height = window.winfo_reqheight()
-    # else: both width and height are provided, use as is
-    
-    # Calculate position (center on screen)
-    x = int((screen_width - width) // 2)
-    y = int((screen_height - height) // 2)
-    
-    # Ensure window doesn't go off-screen
-    x = max(0, min(x, screen_width - width))
-    y = max(0, min(y, screen_height - height))
+    width, height = calculate_window_dimensions(screen_width, screen_height, width, height, proportional, width_ratio, height_ratio)
+    x, y = ensure_within_screen((screen_width - width) // 2, (screen_height - height) // 2, width, height, screen_width, screen_height)
     
     # Set window position and size
     window.geometry(f"{width}x{height}+{x}+{y}")
     logger.debug(f"Centered window: {width}x{height} at ({x}, {y}) (screen: {screen_width}x{screen_height})")
 
 
-def center_window_on_parent(child: tk.Toplevel, parent: tk.Widget,
+def center_window_on_parent(child: tk.Toplevel, parent: Union[tk.Widget, tk.Tk],
                            width: Optional[int] = None, 
                            height: Optional[int] = None,
                            proportional: bool = False,
@@ -84,35 +83,11 @@ def center_window_on_parent(child: tk.Toplevel, parent: tk.Widget,
     """Center a child window on its parent window."""
     # Get parent window info
     parent.update_idletasks()
-    parent_x = parent.winfo_rootx()
-    parent_y = parent.winfo_rooty()
-    parent_width = parent.winfo_width()
-    parent_height = parent.winfo_height()
+    parent_x, parent_y = parent.winfo_rootx(), parent.winfo_rooty()
+    parent_width, parent_height = parent.winfo_width(), parent.winfo_height()
     
-    # Calculate child window dimensions
-    if proportional or (width is None and height is None):
-        width = int(parent_width * width_ratio)
-        height = int(parent_height * height_ratio)
-        
-        # Ensure minimum sizes
-        min_width, min_height = 300, 200
-        width = max(width, min_width)
-        height = max(height, min_height)
-    elif width is None or height is None:
-        child.update_idletasks()
-        if width is None:
-            width = child.winfo_reqwidth()
-        if height is None:
-            height = child.winfo_reqheight()
-    
-    # Calculate position (center on parent)
-    x = parent_x + (parent_width - width) // 2
-    y = parent_y + (parent_height - height) // 2
-    
-    # Get screen dimensions to ensure child doesn't go off-screen
-    screen_width, screen_height = get_screen_dimensions(child)
-    x = max(0, min(x, screen_width - width))
-    y = max(0, min(y, screen_height - height))
+    width, height = calculate_window_dimensions(parent_width, parent_height, width, height, proportional, width_ratio, height_ratio)
+    x, y = ensure_within_screen(parent_x + (parent_width - width) // 2, parent_y + (parent_height - height) // 2, width, height, *get_screen_dimensions(child))
     
     # Set window position and size
     child.geometry(f"{width}x{height}+{x}+{y}")
@@ -141,11 +116,12 @@ def get_safe_filename(filename: str) -> str:
 
 def format_file_size(size_bytes: int) -> str:
     """Format file size in human-readable format."""
+    size = float(size_bytes)  # Ensure size_bytes is treated as float for division
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.1f} PB"
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} PB"
 
 
 def validate_path(path: Union[str, Path]) -> bool:
@@ -172,6 +148,11 @@ def validate_path(path: Union[str, Path]) -> bool:
 class ProgressTracker:
     """Simple progress tracking utility."""
     
+    total: int
+    current: int
+    name: str
+    start_time: Optional[float]
+
     def __init__(self, total: int, name: str = "Task"):
         self.total = total
         self.current = 0
@@ -204,12 +185,16 @@ class ProgressTracker:
 class SimpleCache:
     """Simple in-memory cache for frequently accessed data."""
     
+    max_size: int
+    cache: dict[str, Any]
+    access_order: list[str]
+
     def __init__(self, max_size: int = 100):
         self.max_size = max_size
         self.cache = {}
         self.access_order = []
     
-    def get(self, key: str, default=None):
+    def get(self, key: str, default: Any = None) -> Any:
         """Get a value from cache."""
         if key in self.cache:
             # Move to end (most recently used)
@@ -218,7 +203,7 @@ class SimpleCache:
             return self.cache[key]
         return default
     
-    def set(self, key: str, value) -> None:
+    def set(self, key: str, value: Any) -> None:
         """Set a value in cache."""
         if key in self.cache:
             # Update existing
@@ -283,9 +268,18 @@ def setup_logging(level: str = "INFO",
         logger.info(f"File logging enabled: {log_file}")
 
 
-# Legacy compatibility functions
 def configure_logger(name: str, developer_mode: bool = False) -> logging.Logger:
-    """Legacy function for backward compatibility."""
+    """Configure a logger with appropriate level.
+    
+    This function maintains backward compatibility for code that still uses the legacy logger configuration.
+    
+    Args:
+        name: Name of the logger
+        developer_mode: If True, log level is DEBUG; otherwise INFO
+        
+    Returns:
+        Configured logger instance
+    """
     level = "DEBUG" if developer_mode else "INFO"
     setup_logging(level)
     return logging.getLogger(name)
