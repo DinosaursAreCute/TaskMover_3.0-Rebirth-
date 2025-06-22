@@ -11,6 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: TODO to Issue
-        uses: alstr/todo-to-issue-action@v5.1.12
+        uses: alstr/todo-to-issue-action@v4.6.4
         with:
+          LABEL: feature
           PROJECT: TaskMover
+          MILESTONE: Taskmover MS.2
+          CUSTOM_KEYWORDS: 'TODO,- [ ]'
