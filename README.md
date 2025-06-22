@@ -3,6 +3,9 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](./taskmover_redesign/tests/)
+[![Status](https://img.shields.io/badge/status-beta%20development-orange.svg)](./docs/features/RULESET_MANAGEMENT.md)
+
+> **⚠️ DEVELOPMENT IN PROGRESS**: TaskMover is currently undergoing significant enhancements! The Multiple Ruleset Management feature is being implemented and some functionality may be unstable. See [RULESET_MANAGEMENT.md](./docs/features/RULESET_MANAGEMENT.md) for details on the current development status.
 
 **TaskMover** is a powerful, modern file organization tool that automatically organizes your files based on customizable rules and patterns. Say goodbye to cluttered folders and hello to an organized digital life!
 

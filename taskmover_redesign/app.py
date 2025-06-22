@@ -14,7 +14,7 @@ import logging
 
 # Import redesigned modules
 from .core import (
-    ConfigManager, RuleManager, FileOrganizer, 
+    ConfigManager, RuleManager, FileOrganizer, RulesetManager,
     load_rules, save_rules, load_settings, save_settings, load_or_initialize_rules,
     get_sorted_rule_keys, move_rule_priority, start_organization,
     center_window, center_window_on_parent, configure_logger, setup_logging
@@ -22,6 +22,7 @@ from .core import (
 from .ui.components import Tooltip, ProgressDialog, ConfirmDialog
 from .ui.rule_components import add_rule_button, edit_rule, enable_all_rules, disable_all_rules
 from .ui.settings_components import open_settings_window
+# from .ui.pattern_manager import PatternLibraryManager, PatternManagerTab
 
 class TaskMoverApp:
     def __init__(self):
@@ -34,15 +35,19 @@ class TaskMoverApp:
         
         # Use proportional sizing for main window (60% of screen width, 70% of screen height)
         center_window(self.root, proportional=True, width_ratio=0.6, height_ratio=0.7)
-        
-        # Load configuration
-        self.base_directory = os.path.expanduser("~/default_dir")
+          # Load configuration
+        self.base_directory = os.path.expanduser("~/.taskmover")
         self.config_directory = os.path.join(self.base_directory, "config")
         os.makedirs(self.config_directory, exist_ok=True)
         
-        # Load rules and settings
-        self.rules = load_or_initialize_rules(self.config_directory, self.logger)
+        # Load settings
         self.settings = load_settings(self.logger)
+        
+        # Initialize ruleset manager and load current ruleset
+        self.ruleset_manager = RulesetManager(self.config_directory)
+        self.rules = self.ruleset_manager.load_ruleset_rules(self.ruleset_manager.current_ruleset)
+          # Initialize pattern library
+        # self.pattern_library = PatternLibraryManager(self.config_directory)
         
         # Apply theme from settings
         if "theme" in self.settings:
@@ -193,30 +198,86 @@ class TaskMoverApp:
         
         ttkb.Label(info_frame, text="Last run:", font=("", 10, "bold")).pack(side=RIGHT, padx=(20, 5))
         self.last_run_label = ttkb.Label(info_frame, text="Never")
-        self.last_run_label.pack(side=RIGHT)
-        
+        self.last_run_label.pack(side=RIGHT)        
         self.update_status_display()
-        
+    
     def create_main_content(self):
-        """Create the main content area with rules and activity"""
+        """Create the main content area with rules, patterns, and activity"""
         # Create notebook for tabbed interface
         self.notebook = ttkb.Notebook(self.root)
         self.notebook.pack(fill=BOTH, expand=True, padx=10, pady=(0, 10))
         
         # Rules tab
         rules_frame = ttkb.Frame(self.notebook)
-        self.notebook.add(rules_frame, text="Rules")
+        self.notebook.add(rules_frame, text="📋 Rules")
         
         self.create_rules_list(rules_frame)
-        
-        # Recent Activity tab  
+          # Pattern Manager tab - temporarily disabled
+        # self.pattern_manager_tab = PatternManagerTab(self.notebook, self.pattern_library)
+          # Recent Activity tab  
         activity_frame = ttkb.Frame(self.notebook)
-        self.notebook.add(activity_frame, text="Recent Activity")
+        self.notebook.add(activity_frame, text="📊 Recent Activity")
         
         self.create_activity_section(activity_frame)
         
     def create_rules_list(self, parent):
         """Create the rules list interface"""
+        # Add ruleset selector at the top
+        ruleset_frame = ttkb.Frame(parent)
+        ruleset_frame.pack(fill=X, padx=10, pady=(10, 0))
+        
+        # Add ruleset label and dropdown
+        ttkb.Label(ruleset_frame, text="Active Ruleset:", font=("", 10, "bold")).pack(side=LEFT, padx=(0, 10))
+        
+        # Ruleset dropdown
+        self.ruleset_var = tk.StringVar(value=self.ruleset_manager.current_ruleset)
+        self.ruleset_dropdown = ttkb.Combobox(ruleset_frame, textvariable=self.ruleset_var, state="readonly", width=20)
+        self.update_ruleset_dropdown()
+        self.ruleset_dropdown.pack(side=LEFT, padx=(0, 10))
+        self.ruleset_dropdown.bind("<<ComboboxSelected>>", self.on_ruleset_change)
+        
+        # Ruleset action buttons
+        ruleset_btn_frame = ttkb.Frame(ruleset_frame)
+        ruleset_btn_frame.pack(side=RIGHT)
+        
+        # Button styling
+        button_style = "outline.Toolbutton"
+        button_padding = (3, 0)
+        
+        # New ruleset button
+        new_ruleset_btn = ttkb.Button(ruleset_frame, text="+ New", style=button_style, 
+                                     command=self.create_new_ruleset)
+        new_ruleset_btn.pack(side=LEFT, padx=button_padding)
+        Tooltip(new_ruleset_btn, "Create a new ruleset")
+        
+        # Import ruleset button
+        import_btn = ttkb.Button(ruleset_frame, text="Import", style=button_style,
+                                command=self.import_ruleset)
+        import_btn.pack(side=LEFT, padx=button_padding)
+        Tooltip(import_btn, "Import a ruleset from file")
+        
+        # Export ruleset button
+        export_btn = ttkb.Button(ruleset_frame, text="Export", style=button_style,
+                                command=self.export_ruleset)
+        export_btn.pack(side=LEFT, padx=button_padding)
+        Tooltip(export_btn, "Export current ruleset to file")
+        
+        # Rename ruleset button
+        rename_btn = ttkb.Button(ruleset_frame, text="Rename", style=button_style,
+                                command=self.rename_ruleset)
+        rename_btn.pack(side=LEFT, padx=button_padding)
+        Tooltip(rename_btn, "Rename current ruleset")
+        
+        # Delete ruleset button
+        delete_btn = ttkb.Button(ruleset_frame, text="Delete", style="outline.Danger.Toolbutton",
+                               command=self.delete_ruleset)
+        delete_btn.pack(side=LEFT, padx=button_padding)
+        Tooltip(delete_btn, "Delete current ruleset")
+        
+        # Separator below ruleset controls
+        separator = ttkb.Separator(parent, orient="horizontal")
+        separator.pack(fill=X, padx=10, pady=(10, 0))
+        
         # Rules list with scrollbar
         list_frame = ttkb.Frame(parent)
         list_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
@@ -389,12 +450,11 @@ class TaskMoverApp:
                 priority,
                 rule_key,
                 patterns_text,
-                destination
-            ))
+                destination            ))
             
         self.update_status_display()
         self.update_status_bar()
-        
+    
     def get_selected_rule_key(self):
         """Get the key of the currently selected rule"""
         if self.selected_rule_index is None:
@@ -404,14 +464,14 @@ class TaskMoverApp:
         if 0 <= self.selected_rule_index < len(sorted_keys):
             return sorted_keys[self.selected_rule_index]
         return None
-        
+    
     def add_rule(self):
         """Add a new rule"""
         # Create a wrapper callback that handles the signature
         def refresh_callback():
             self.refresh_rules_display()
             
-        add_rule_button(self.rules, self.config_directory, None, self.logger, self.root, refresh_callback)
+        add_rule_button(self.rules, self.config_directory, None, self.logger, self.root, refresh_callback, None)
         
     def edit_selected_rule(self):
         """Edit the selected rule"""
@@ -420,7 +480,7 @@ class TaskMoverApp:
             messagebox.showwarning("No Selection", "Please select a rule to edit.")
             return
             
-        edit_rule(rule_key, self.rules, self.config_directory, self.logger, None)
+        edit_rule(rule_key, self.rules, self.config_directory, self.logger, None, None)
         self.refresh_rules_display()
         
     def duplicate_rule(self):
@@ -448,9 +508,9 @@ class TaskMoverApp:
         if 'id' not in original_rule:
             import uuid
             original_rule['id'] = str(uuid.uuid4())
-        
+            
         self.rules[new_name] = original_rule
-        save_rules(self.config_directory, self.rules)
+        self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
         
         self.refresh_rules_display()
         self.logger.info(f"Duplicated rule: {rule_key} → {new_name}")
@@ -464,7 +524,7 @@ class TaskMoverApp:
             
         if messagebox.askyesno("Confirm Delete", f'Are you sure you want to delete the rule "{rule_key}"?'):
             del self.rules[rule_key]
-            save_rules(self.config_directory, self.rules)
+            self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
             self.refresh_rules_display()
             self.logger.info(f"Deleted rule: {rule_key}")
             
@@ -475,7 +535,7 @@ class TaskMoverApp:
             return
             
         self.rules[rule_key]['active'] = not self.rules[rule_key].get('active', True)
-        save_rules(self.config_directory, self.rules)
+        self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
         self.refresh_rules_display()
         
     def enable_all_rules(self):
@@ -501,7 +561,7 @@ class TaskMoverApp:
             return
             
         move_rule_priority(self.rules, rule_key, -1)
-        save_rules(self.config_directory, self.rules)
+        self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
         self.refresh_rules_display()
         
     def move_rule_down(self):
@@ -511,7 +571,7 @@ class TaskMoverApp:
             return
             
         move_rule_priority(self.rules, rule_key, 1)
-        save_rules(self.config_directory, self.rules)
+        self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
         self.refresh_rules_display()
         
     # ===== ORGANIZATION =====
@@ -781,7 +841,7 @@ class TaskMoverApp:
                 self.save_rule_set()
                 
         self.rules = {}
-        save_rules(self.config_directory, self.rules)
+        self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
         self.refresh_rules_display()
         self.logger.info("Created new rule set")
         
@@ -806,7 +866,7 @@ class TaskMoverApp:
                         loaded_rules = yaml.safe_load(f) or {}
                         
                 self.rules = loaded_rules
-                save_rules(self.config_directory, self.rules)
+                self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
                 self.refresh_rules_display()
                 messagebox.showinfo("Success", f"Loaded {len(self.rules)} rules from {os.path.basename(file_path)}")
                 self.logger.info(f"Opened rule set from {file_path}")
@@ -910,7 +970,7 @@ class TaskMoverApp:
                         counter += 1
                     self.rules[final_name] = rule_data
                     
-            save_rules(self.config_directory, self.rules)
+            self.ruleset_manager.save_ruleset_rules(self.ruleset_manager.current_ruleset, self.rules)
             self.refresh_rules_display()
             messagebox.showinfo("Success", f"Successfully imported {len(imported_rules)} rules.")
             self.logger.info(f"Imported {len(imported_rules)} rules from {file_path}")
@@ -1094,10 +1154,144 @@ Licensed under MIT License"""
         
         progress_dialog.update()
     
+    # Ruleset Management Methods
+    def update_ruleset_dropdown(self):
+        """Update the ruleset dropdown with available rulesets."""
+        available_rulesets = self.ruleset_manager.get_available_rulesets()
+        # Extract just the names for the dropdown
+        ruleset_names = [rs['name'] for rs in available_rulesets]
+        self.ruleset_dropdown['values'] = ruleset_names
+        self.ruleset_var.set(self.ruleset_manager.current_ruleset)
+    
+    def on_ruleset_change(self, event):
+        """Handle ruleset selection change."""
+        new_ruleset = self.ruleset_var.get()
+        if new_ruleset != self.ruleset_manager.current_ruleset:
+            # Confirm switch if there are unsaved changes
+            if self._has_unsaved_changes():
+                if not messagebox.askyesno("Unsaved Changes", 
+                                         f"You have unsaved changes in the current ruleset.\n\nSwitch to '{new_ruleset}' anyway?"):
+                    # Revert selection
+                    self.ruleset_var.set(self.ruleset_manager.current_ruleset)
+                    return
+            
+            # Switch ruleset
+            if self.ruleset_manager.switch_ruleset(new_ruleset):
+                self.rules = self.ruleset_manager.load_ruleset_rules(new_ruleset)
+                self.refresh_rules_display()
+                messagebox.showinfo("Ruleset Switched", f"Switched to ruleset: {new_ruleset}")
+            else:
+                messagebox.showerror("Error", f"Failed to switch to ruleset: {new_ruleset}")
+                self.ruleset_var.set(self.ruleset_manager.current_ruleset)
+    
+    def _has_unsaved_changes(self):
+        """Check if there are unsaved changes in the current ruleset."""
+        # For now, always return False
+        # TODO: Implement proper change tracking
+        return False
+    
+    def create_new_ruleset(self):
+        """Create a new ruleset."""
+        from .ui.ruleset_components import RulesetCreationDialog
+        
+        dialog = RulesetCreationDialog(self.root, self.ruleset_manager)
+        self.root.wait_window(dialog.dialog)
+        
+        if dialog.result:
+            self.update_ruleset_dropdown()
+            
+            # Switch to new ruleset if requested
+            if dialog.switch_after_create:
+                self.ruleset_var.set(dialog.result)
+                self.on_ruleset_change(None)
+    
+    def import_ruleset(self):
+        """Import a ruleset from file."""
+        file_path = filedialog.askopenfilename(
+            title="Import Ruleset",
+            filetypes=[("TaskMover Ruleset", "*.tmr"), ("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        
+        if not file_path:
+            return
+            
+        # Ask for name
+        new_name = simpledialog.askstring("Import Ruleset", 
+                                        "Name for the imported ruleset:",
+                                        parent=self.root)
+        
+        if new_name:
+            if self.ruleset_manager.import_ruleset(file_path, new_name):
+                messagebox.showinfo("Success", f"Ruleset imported as '{new_name}'")
+                self.update_ruleset_dropdown()
+            else:
+                messagebox.showerror("Error", f"Failed to import ruleset")
+    
+    def export_ruleset(self):
+        """Export current ruleset to file."""
+        file_path = filedialog.asksaveasfilename(
+            title="Export Ruleset",
+            defaultextension=".tmr",
+            filetypes=[("TaskMover Ruleset", "*.tmr"), ("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        
+        if not file_path:
+            return
+            
+        if self.ruleset_manager.export_ruleset(self.ruleset_manager.current_ruleset, file_path):
+            messagebox.showinfo("Success", f"Ruleset '{self.ruleset_manager.current_ruleset}' exported")
+        else:
+            messagebox.showerror("Error", f"Failed to export ruleset")
+    
+    def rename_ruleset(self):
+        """Rename current ruleset."""
+        if self.ruleset_manager.current_ruleset == "Default":
+            messagebox.showwarning("Cannot Rename", "The Default ruleset cannot be renamed.")
+            return
+            
+        new_name = simpledialog.askstring("Rename Ruleset", 
+                                        "New name for the ruleset:",
+                                        parent=self.root,
+                                        initialvalue=self.ruleset_manager.current_ruleset)
+        
+        if new_name and new_name != self.ruleset_manager.current_ruleset:
+            if self.ruleset_manager.rename_ruleset(self.ruleset_manager.current_ruleset, new_name):
+                old_name = self.ruleset_manager.current_ruleset
+                self.ruleset_manager.current_ruleset = new_name
+                self.update_ruleset_dropdown()
+                messagebox.showinfo("Success", f"Ruleset renamed from '{old_name}' to '{new_name}'")
+            else:
+                messagebox.showerror("Error", f"Failed to rename ruleset")
+    
+    def delete_ruleset(self):
+        """Delete current ruleset."""
+        current = self.ruleset_manager.current_ruleset
+        
+        if current == "Default":
+            messagebox.showwarning("Cannot Delete", "The Default ruleset cannot be deleted.")
+            return
+            
+        confirm = messagebox.askyesno("Confirm Deletion", 
+                                    f"Are you sure you want to delete the ruleset '{current}'?\n\nThis action cannot be undone.")
+        
+        if confirm:
+            # We need to switch to default first
+            self.ruleset_manager.switch_ruleset("Default")
+            
+            if self.ruleset_manager.delete_ruleset(current):
+                self.rules = self.ruleset_manager.load_ruleset_rules("Default")
+                self.refresh_rules_display()
+                self.update_ruleset_dropdown()
+                messagebox.showinfo("Success", f"Ruleset '{current}' deleted")
+            else:
+                messagebox.showerror("Error", f"Failed to delete ruleset '{current}'")
+
+
 def main():
     """Main entry point"""
     app = TaskMoverApp()
     app.root.mainloop()
+
 
 if __name__ == "__main__":
     main()
