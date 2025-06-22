@@ -13,7 +13,4 @@ jobs:
       - name: TODO to Issue
         uses: alstr/todo-to-issue-action@v5.1.12
         with:
-          LABEL: feature
           PROJECT: TaskMover
-          MILESTONE: Taskmover MS.2
-          CUSTOM_KEYWORDS: 'TODO,- [ ]'
