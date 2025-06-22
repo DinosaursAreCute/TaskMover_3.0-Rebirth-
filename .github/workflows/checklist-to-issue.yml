@@ -13,8 +13,4 @@ jobs:
       - name: TODO to Issue
         uses: alstr/todo-to-issue-action@v5.1.12
         with:
-          LABEL: feature
-          PROJECT: File Mover
-          MILESTONE: MS.2
-          # Optionally, to also match markdown checklists:
-          CUSTOM_KEYWORDS: 'TODO,- [ ]'
+          PROJECT: TaskMover
