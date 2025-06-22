@@ -1,0 +1,14 @@
+auto_backup: true
+auto_save: true
+collapse_on_start: true
+confirm_deletions: true
+developer_mode: true
+logging_components:
+  File Operations: true
+  Rules: true
+  Settings: true
+  UI: true
+logging_level: DEBUG
+organisation_folder: C:\Users\noahh\Downloads
+show_tooltips: true
+theme: darkly

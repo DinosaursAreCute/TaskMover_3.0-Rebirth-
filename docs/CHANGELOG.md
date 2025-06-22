@@ -1,5 +1,8 @@
 # Changelog
-
+## [3.0.1] - 2025-06-17
+### Fixed
+- Fixed an issue where windows would open in the wrong position on some systems.
+- Fixed and issue where windows would not open in the correct size on some systems.
 ## [3.0.0] - 2025-06-16
 
 ### 🚀 MAJOR RELEASE: Complete Application Redesign
