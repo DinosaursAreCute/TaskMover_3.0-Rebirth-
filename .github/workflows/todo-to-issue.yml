@@ -14,6 +14,6 @@ jobs:
         uses: alstr/todo-to-issue-action@v4.6.4
         with:
           LABEL: feature
-          PROJECT: TaskMover
+          PROJECT: File Mover
           MILESTONE: Taskmover MS.2
           CUSTOM_KEYWORDS: 'TODO,- [ ]'
