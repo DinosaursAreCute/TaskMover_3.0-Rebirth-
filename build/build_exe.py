@@ -38,7 +38,7 @@ def check_environment():
     # Check if we're in the correct directory
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent
-    if not (repo_root / "taskmover_redesign").exists():
+    if not (repo_root / "taskmover").exists():
         logger.error("Not in the expected build directory structure. Please run from the 'build' directory.")
         return False
         
@@ -88,7 +88,7 @@ def validate_spec_file(spec_path):
         "PYZ(", 
         "EXE(", 
         "name='TaskMover'", 
-        "taskmover_redesign"
+        "taskmover"
     ]
     
     for element in required_elements:
@@ -103,10 +103,18 @@ def build_executable():
     """Build the executable using PyInstaller"""
     logger.info("Building TaskMover executable...")
     
-    # Get the path to the spec file
+    # Get the path to the spec file - prefer v4 spec, fallback to GitHub spec
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent
-    spec_path = repo_root / '.github' / 'TaskMover.spec'
+    
+    # Try v4 spec first (most comprehensive)
+    spec_path = script_dir / 'TaskMover_v4.spec'
+    if not spec_path.exists():
+        # Fallback to GitHub spec
+        spec_path = repo_root / '.github' / 'TaskMover.spec'
+        logger.info("Using GitHub spec file as fallback")
+    else:
+        logger.info("Using comprehensive v4 spec file")
     
     # Validate the spec file
     if not validate_spec_file(spec_path):

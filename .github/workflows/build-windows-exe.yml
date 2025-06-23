@@ -27,20 +27,53 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          # For detailed build instructions, see .github/BUILD_INSTRUCTIONS.md
+          # Updated for new structure: taskmover/ instead of taskmover_redesign/
+          # For detailed build instructions, see build/BUILD_INSTRUCTIONS_NEW.md
           pyinstaller .github/TaskMover.spec
+
+      - name: Test executable
+        run: |
+          # Basic test to ensure the executable was created and can be launched
+          if (Test-Path "dist/TaskMover.exe") {
+            Write-Host "✓ Executable created successfully"
+            $size = (Get-Item "dist/TaskMover.exe").Length / 1MB
+            Write-Host "✓ Executable size: $([math]::Round($size, 2)) MB"
+          } else {
+            Write-Host "✗ Executable not found"
+            exit 1
+          }
 
       - name: Upload EXE as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TaskMover-exe
+          name: TaskMover-exe-${{ github.sha }}
           path: |
             dist/TaskMover.exe
+          retention-days: 30
 
       - name: Upload to GitHub Release (if release event)
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/TaskMover.exe
+          name: TaskMover ${{ github.ref_name }}
+          body: |
+            ## TaskMover Release ${{ github.ref_name }}
+            
+            ### What's New
+            - Updated project structure with comprehensive UI framework
+            - Enhanced component system in `taskmover/ui/`
+            - Improved build process and testing
+            
+            ### Installation
+            1. Download `TaskMover.exe`
+            2. Run the executable (no installation required)
+            3. Configure settings as needed
+            
+            ### System Requirements
+            - Windows 10 or later
+            - No additional dependencies required
+            
+            Built with Python 3.11 and PyInstaller.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

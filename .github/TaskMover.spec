@@ -56,7 +56,7 @@ if os.path.exists(settings_path):
 
 # Define the analysis phase
 a = Analysis(
-    [os.path.join(root_dir, 'taskmover_redesign', '__main__.py')],
+    [os.path.join(root_dir, 'taskmover', '__main__.py')],
     pathex=[root_dir],
     binaries=[],
     datas=datas,
@@ -65,6 +65,15 @@ a = Analysis(
         'ttkbootstrap',
         'yaml',
         'colorlog',
+        'taskmover',
+        'taskmover.ui',
+        'taskmover.ui.theme_manager',
+        'taskmover.ui.input_components',
+        'taskmover.ui.display_components',
+        'taskmover.ui.layout_components',
+        'taskmover.ui.navigation_components',
+        'taskmover.ui.data_display_components',
+        'taskmover.ui.dialog_components',
     ],
     hookspath=[],
     hooksconfig={},

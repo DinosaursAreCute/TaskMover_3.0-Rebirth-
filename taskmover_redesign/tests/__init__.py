@@ -1,3 +1,0 @@
-"""
-TaskMover Redesigned Tests Package
-"""

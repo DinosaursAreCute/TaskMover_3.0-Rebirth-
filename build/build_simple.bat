@@ -6,8 +6,11 @@ echo ---------------------
 echo [%date% %time%] Build started
 
 rem Verify we're in the right directory
-if not exist "..\taskmover_redesign" (
+if not exist "..\taskmover" (
     echo ERROR: Please run this script from the 'build' directory
+    echo ERROR: TaskMover main directory not found
+    goto :error
+)
     exit /b 1
 )
 
