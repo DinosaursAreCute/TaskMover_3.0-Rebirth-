@@ -1,0 +1,119 @@
+# TaskMover Logging Configuration
+# This file configures the comprehensive logging system for TaskMover
+
+logging:
+  # Global logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: INFO
+  
+  # Session tracking for correlating log entries
+  session_tracking: true
+  
+  # Performance monitoring (logs slow operations)
+  performance_monitoring: true
+  
+  # Console output configuration
+  console:
+    enabled: true
+    level: INFO  # Override global level for console
+    colors: true  # Enable colored output
+    format: compact  # compact, detailed, minimal
+    include_timestamp: true
+    include_component: true
+    include_thread: false
+    
+  # File output configuration
+  file:
+    enabled: true
+    level: DEBUG  # Override global level for file (more verbose)
+    path: "logs/taskmover.log"
+    format: detailed  # detailed, json, compact
+    encoding: utf-8
+    
+    # Rotation and cleanup settings
+    rotation:
+      max_size: 10MB  # Size before rotation
+      backup_count: 5  # Number of backup files to keep
+      retention_days: 30  # Days to keep log files
+      compression_enabled: true  # Compress rotated files
+      cleanup_schedule: daily  # When to run cleanup
+      
+  # Component-specific log levels
+  components:
+    # UI components - less verbose for production
+    ui: INFO
+    ui.theme: INFO
+    ui.components: WARNING
+    ui.dialogs: INFO
+    ui.events: WARNING
+    
+    # Core application - standard verbosity
+    core: INFO
+    core.app: INFO
+    core.config: WARNING
+    core.startup: INFO
+    core.shutdown: INFO
+    
+    # Build system - errors and warnings only
+    build: WARNING
+    build.pyinstaller: ERROR
+    build.spec: WARNING
+    build.assets: WARNING
+    build.validation: INFO
+    
+    # Testing - debug level for detailed test info
+    tests: DEBUG
+    tests.unit: DEBUG
+    tests.integration: INFO
+    tests.ui: DEBUG
+    tests.performance: INFO
+    
+    # File operations - detailed logging
+    file_ops: DEBUG
+    file_ops.scan: INFO
+    file_ops.move: INFO
+    file_ops.copy: INFO
+    file_ops.organize: DEBUG
+    
+    # Pattern system - debug for pattern development
+    pattern: DEBUG
+    pattern.match: DEBUG
+    pattern.validate: INFO
+    pattern.compile: WARNING
+    
+    # Storage operations
+    storage: INFO
+    storage.config: WARNING
+    storage.rules: INFO
+    storage.cache: WARNING
+    
+    # Development and debugging
+    debug: DEBUG
+    dev: DEBUG
+    performance: INFO
+    
+  # Performance logging settings
+  performance:
+    enabled: true
+    threshold_ms: 100  # Log operations taking longer than this
+    memory_tracking: false  # Track memory usage (overhead)
+    function_timing: false  # Log function entry/exit (very verbose)
+    
+  # Advanced features
+  advanced:
+    context_capture: true  # Capture additional context on errors
+    stack_trace_limit: 10  # Lines in stack traces
+    async_logging: false   # For high-performance scenarios
+    buffer_size: 1000     # Buffer size for async logging
+    
+  # Integration settings
+  integration:
+    ui_notifications: true     # Show critical errors as UI notifications
+    build_integration: true    # Enhanced build logging
+    test_integration: true     # Test execution logging
+    
+  # Development tools (disable in production)
+  development:
+    debug_mode: false         # Enable debug-specific features
+    log_method_calls: false   # Log all method entry/exit
+    log_variable_changes: false # Log variable state changes
+    profiling: false          # Enable performance profiling

@@ -6,16 +6,16 @@ including dependency injection, logging, storage, and configuration management.
 """
 
 from .exceptions import (
-    TaskMoverException,
-    ConfigurationException, 
-    ServiceException,
     CircularDependencyException,
-    StorageException,
-    ValidationException,
+    ConfigurationException,
+    FileOperationException,
     LoggingException,
     PatternException,
     RuleException,
-    FileOperationException
+    ServiceException,
+    StorageException,
+    TaskMoverException,
+    ValidationException,
 )
 
 __version__ = "1.0.0"
@@ -23,7 +23,7 @@ __version__ = "1.0.0"
 __all__ = [
     "TaskMoverException",
     "ConfigurationException",
-    "ServiceException", 
+    "ServiceException",
     "CircularDependencyException",
     "StorageException",
     "ValidationException",

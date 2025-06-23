@@ -1,13 +1,11 @@
 @echo off
-REM TaskMover Development Environment Setup
-REM This script sets up the complete development environment for TaskMover
+REM TaskMover Development Environment Setup Script
+REM Sets up Poetry, dependencies, and development tools
 
-echo 🚀 TaskMover Development Environment Setup
-echo ==========================================
+echo 🚀 Setting up TaskMover development environment...
 
-REM Check if Python 3.11+ is installed
-echo 🔍 Checking Python installation...
-python --version >nul 2>&1
+REM Check if Python 3.11+ is available
+python --version 2>nul | findstr /r "Python 3\.1[1-9]" >nul
 if %errorlevel% neq 0 (
     echo ❌ Python is not installed or not in PATH
     echo Please install Python 3.11+ from https://python.org
