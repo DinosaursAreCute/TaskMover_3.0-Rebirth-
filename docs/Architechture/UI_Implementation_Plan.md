@@ -624,4 +624,33 @@ def execute_organization(self, ruleset):
 6. Add advanced features and interactions
 7. Polish, test, and document
 
+## Logging Integration Components
+
+### Log Viewer Components
+- [ ] Create real-time log viewer with scrollable text display
+- [ ] Implement log level filtering UI (DEBUG, INFO, WARNING, ERROR)
+- [ ] Add timestamp formatting options in log viewer
+- [ ] Create log search and highlighting functionality
+- [ ] Implement log export functionality from UI
+- [ ] Add log viewer auto-refresh and pause controls
+- [ ] Create log entry detail popup with full context
+
+### Logging Configuration UI
+- [ ] Implement logging preferences panel in settings
+- [ ] Create log level selection controls for components
+- [ ] Add file handler configuration UI (rotation, path, size)
+- [ ] Implement console output preferences
+- [ ] Create logging filter configuration interface
+- [ ] Add logging format selection controls
+- [ ] Implement log cleanup and retention settings UI
+
+### Logging Status Indicators
+- [ ] Create logging status indicator in main UI
+- [ ] Implement error count badges and notifications
+- [ ] Add logging performance impact indicators
+- [ ] Create log file size and rotation status displays
+- [ ] Implement logging system health status indicators
+- [ ] Add quick access buttons for log operations
+- [ ] Create logging diagnostics panel
+
 This plan ensures that all visual components are implemented first, with clear integration points for connecting the business logic later. Each component is designed to be self-contained and testable independently of the underlying application logic.
