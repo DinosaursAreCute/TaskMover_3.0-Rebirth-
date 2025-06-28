@@ -1,1 +1,0 @@
-- [ ] Test that the action creates an issue for this item

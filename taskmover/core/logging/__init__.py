@@ -18,13 +18,14 @@ Usage:
 from .config import LoggingConfig
 from .formatters import ComponentFormatter, ConsoleFormatter, FileFormatter
 from .handlers import CleanupHandler, ColoredConsoleHandler, RotatingFileHandler
-from .manager import LoggerManager, get_component_logger, get_logger, log_context
+from .manager import LoggerManager, get_component_logger, get_logger, log_context, ComponentLogger
 
 __all__ = [
     "LoggerManager",
     "get_logger",
     "get_component_logger",
     "log_context",
+    "ComponentLogger",
     "LoggingConfig",
     "ConsoleFormatter",
     "FileFormatter",

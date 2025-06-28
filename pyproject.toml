@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "taskmover"
 version = "1.0.0"
-description = "Advanced file organization and automation tool with pattern-based rules"
+description = "Intelligent file organization system with pattern-based rules, conflict resolution, and AI-assisted development"
 authors = ["TaskMover Team"]
 readme = "README.md"
 packages = [{include = "taskmover"}]
