@@ -33,6 +33,7 @@ TaskMover is an advanced file organization tool that uses intelligent pattern ma
 
 ### 🚧 Current Development Status
 - ✅ **Backend**: Pattern System fully implemented and tested (COMPLETE)
+- ✅ **Rule System**: File organization rules with pattern integration (COMPLETE)
 - ✅ **Frontend**: Modern UI system with all components (COMPLETE)
 - ✅ **Integration**: Backend/frontend integration (COMPLETE)
 - 🔄 **Testing**: End-to-end testing and bug fixes (in progress)
@@ -94,6 +95,12 @@ taskmover/
 │   │   ├── storage/         # Pattern storage and caching
 │   │   ├── suggestions/     # Context-aware suggestions
 │   │   └── validation/      # Pattern validation
+│   ├── rules/               # Rule system (COMPLETE)
+│   │   ├── models.py        # Rule data models and structures
+│   │   ├── service.py       # Rule execution and management
+│   │   ├── exceptions.py    # Rule system exceptions
+│   │   ├── storage/         # Rule persistence and repository
+│   │   └── validation/      # Rule validation and conflict detection
 │   ├── conflict_resolution/ # Conflict handling (COMPLETE)
 │   ├── logging/            # Structured logging (COMPLETE)
 │   ├── di/                 # Dependency injection (COMPLETE)
@@ -119,8 +126,10 @@ taskmover/
 ### ✅ Implemented (Complete System)
 
 #### Backend Features
+
 - **Intelligent Pattern Parsing**: Natural language-like pattern expressions
 - **Unified Matching Engine**: Single system handling multiple pattern types
+- **Rule-Based File Operations**: Create, manage, and execute file organization rules with pattern integration
 - **Advanced Conflict Resolution**: Multiple strategies with user interaction
 - **Context-Aware Suggestions**: Intelligent auto-completion based on workspace analysis
 - **Performance Optimization**: Multi-level caching for large file operations
