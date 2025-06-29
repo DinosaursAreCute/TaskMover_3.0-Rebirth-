@@ -4,11 +4,15 @@ Dialog Examples
 Demonstrates various dialog types using TaskMover UI components.
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
 import tkinter as tk
 
-from ui.dialog_components import ConfirmationDialog, InputDialog, MessageDialog
-from ui.input_components import CustomButton
-from ui.layout_components import Panel
+from taskmover.ui.dialog_components import ConfirmationDialog, InputDialog, MessageDialog
+from taskmover.ui.input_components import CustomButton
+from taskmover.ui.layout_components import Panel
 
 
 class DialogExamples:

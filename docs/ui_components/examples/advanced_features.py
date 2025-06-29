@@ -6,9 +6,12 @@ Demonstrates advanced UI features like drag & drop, multi-selection, etc.
 
 import tkinter as tk
 
-from ui.advanced_ui_features import DragDropManager, MultiSelectionManager
-from ui.input_components import CustomButton
-from ui.layout_components import Panel
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
+from taskmover.ui.base_component import ModernButton
+from tkinter import messagebox
 
 
 class AdvancedFeaturesExample:
@@ -18,7 +21,9 @@ class AdvancedFeaturesExample:
 
     def create_advanced_demo(self):
         # Main panel
-        main_panel = Panel(self.parent, title="Advanced Features Demo")
+        # Create main container
+        main_panel = tk.Frame(self.parent)
+        main_panel.pack(fill="both", expand=True, padx=20, pady=20)
         main_panel.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
         # Drag & Drop demo
@@ -115,15 +120,15 @@ class AdvancedFeaturesExample:
 
     def on_drop(self, event):
         print("Item dropped!")
-        tk.messagebox.showinfo("Drop Event", "Item was successfully dropped!")
+        messagebox.showinfo("Drop Event", "Item was successfully dropped!")
 
     def show_selection(self, listbox):
         selected = [listbox.get(i) for i in listbox.curselection()]
         if selected:
             items = ", ".join(selected)
-            tk.messagebox.showinfo("Selected Items", f"Selected: {items}")
+            messagebox.showinfo("Selected Items", f"Selected: {items}")
         else:
-            tk.messagebox.showinfo("Selected Items", "No items selected")
+            messagebox.showinfo("Selected Items", "No items selected")
 
 
 if __name__ == "__main__":

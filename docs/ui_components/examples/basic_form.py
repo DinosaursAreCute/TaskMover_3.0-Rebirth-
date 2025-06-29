@@ -4,11 +4,15 @@ Basic Form Example
 Demonstrates how to create a simple form using TaskMover UI components.
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
 import tkinter as tk
 
-from ui.display_components import CustomLabel
-from ui.input_components import CustomButton, CustomCheckbox, CustomEntry
-from ui.layout_components import Panel
+from taskmover.ui.display_components import CustomLabel
+from taskmover.ui.input_components import CustomButton, CustomCheckbox, CustomEntry
+from taskmover.ui.layout_components import Panel
 
 
 class BasicFormExample:

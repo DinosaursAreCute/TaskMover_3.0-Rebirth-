@@ -4,10 +4,14 @@ Layout Demo Example
 Demonstrates various layout options using TaskMover UI components.
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
 import tkinter as tk
 
-from ui.display_components import CustomLabel
-from ui.layout_components import Accordion, Card, Panel, TabContainer
+from taskmover.ui.display_components import CustomLabel
+from taskmover.ui.layout_components import Accordion, Card, Panel, TabContainer
 
 
 class LayoutDemoExample:

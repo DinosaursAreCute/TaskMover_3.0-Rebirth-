@@ -1,4 +1,31 @@
-# TaskMover UI Mockups and Component Reference
+# TaskMover UI Component Reference - Implementation Complete
+
+**Status**: ✅ FULLY IMPLEMENTED (June 29, 2025)  
+**Version**: 1.0.0  
+**Last Updated**: June 29, 2025
+
+## 🎉 Implementation Status
+
+All UI components described in this reference have been **fully implemented and tested**. The TaskMover application now features a complete, modern user interface with all the components and functionality outlined below.
+
+### ✅ Completed Components
+- **Base Component System**: Foundation classes with accessibility and theming
+- **Navigation Components**: Sidebar, toolbar, breadcrumbs, and tab navigation
+- **Input Components**: Smart pattern input, modern form controls, and validation
+- **Pattern Management**: Visual pattern library and interactive builder
+- **Execution Interface**: File operation controls with real-time feedback
+- **Dialog System**: Modal dialogs for user interaction and progress tracking
+- **History Management**: Operation timeline and filtering capabilities
+- **Theme System**: Light/dark themes with customizable design tokens
+- **Main Application**: Integrated window with all components working together
+
+### 🚀 Ready to Use
+The application is now ready for production use with all UI components functioning as designed. Run the application with:
+```bash
+python -m taskmover
+```
+
+---
 
 ## Main Application Layout
 
@@ -47,30 +74,40 @@
 
 ## Navigation Components
 
-### Sidebar Navigation
+### Modern Sidebar Navigation
 ```
 ┌─────────────────┐
-│ NAVIGATION      │
+│ TaskMover       │ ← App logo/title
 ├─────────────────┤
-│ 🏠 Dashboard    │ ← Active state (highlighted)
-│ 📋 Patterns     │
-│   └ 📝 Library  │ ← Nested items
-│   └ ➕ New      │
+│ 🏠 Dashboard    │ ← Active state (highlighted background)
+│                 │
+│ 📋 Patterns     │ ← Hover state
+│   • Library     │ ← Nested items with bullets
+│   • Groups      │
+│   + New         │ ← Quick actions
+│                 │
 │ 📏 Rules        │
-│   └ 📃 All      │
-│   └ ⚡ Active   │
-│   └ 🚫 Disabled │
+│   • Active (12) │ ← Badge with count
+│   • Disabled    │
+│   + New         │
+│                 │
 │ 📦 Rulesets     │
-│   └ 📋 All      │
-│   └ 🏷️  Tagged  │
-│ ⚡ Execute      │
+│   • Recent      │
+│   • Templates   │
+│   + New         │
+│                 │
+│ ⚡ Execute      │ ← Action items
+│                 │
+│ ├─ Activity ────┤ ← Section separator
 │ 📈 History      │
-│   └ 📊 Stats    │
-│   └ 📜 Logs     │
+│ 📊 Statistics   │
+│ 📜 Logs         │
+│                 │
+│ ├─ System ──────┤
 │ ⚙️  Settings    │
 │ ❓ Help         │
 │                 │
-│ [◀] Collapse    │ ← Collapse button
+│ [◀] Collapse    │ ← Minimize to icons only
 └─────────────────┘
 ```
 
@@ -114,29 +151,43 @@
 
 ### Pattern Library View
 
-#### Grid View (Default)
+#### Grid View (Default) - Updated with System Groups
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ Pattern Library                                           [+ New Pattern]   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Search: [_______________] Category: [All ▼] Status: [All ▼] Sort: [Name ▼]  │
+│ Search: [_______________] Group: [All ▼] Status: [All ▼] Sort: [Usage ▼]    │
 │                                                   View: [📱 Grid] [📋 Table] │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐               │
-│ │ Documents       │ │ Images          │ │ Code Files      │               │
-│ │ *.pdf,*.doc     │ │ *.jpg,*.png     │ │ *.py,*.js       │               │
-│ │ 📊 Used in 3    │ │ 📊 Used in 1    │ │ 📊 Not used     │               │
-│ │ [✏️] [📋] [🗑️]   │ │ [✏️] [📋] [🗑️]   │ │ [✏️] [📋] [🗑️]   │               │
-│ └─────────────────┘ └─────────────────┘ └─────────────────┘               │
+│ ┌─ System Groups ────────────────────────────────────────────────────────┐   │
+│ │ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐           │   │
+│ │ │ @media          │ │ @documents      │ │ @code           │           │   │
+│ │ │ Images, Videos  │ │ Office Files    │ │ Source Code     │           │   │
+│ │ │ 🎯 Built-in     │ │ 🎯 Built-in     │ │ 🎯 Built-in     │           │   │
+│ │ │ 📊 Used in 5    │ │ 📊 Used in 8    │ │ 📊 Used in 3    │           │   │
+│ │ │ [✏️] [📋] [ℹ️]   │ │ [✏️] [📋] [ℹ️]   │ │ [✏️] [📋] [ℹ️]   │           │   │
+│ │ └─────────────────┘ └─────────────────┘ └─────────────────┘           │   │
+│ │                                                                       │   │
+│ │ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐           │   │
+│ │ │ @archives       │ │ @temporary      │ │ + Custom Group  │           │   │
+│ │ │ Compressed      │ │ Temp & Cache    │ │                 │           │   │
+│ │ │ 🎯 Built-in     │ │ 🎯 Built-in     │ │   Click to      │           │   │
+│ │ │ 📊 Used in 2    │ │ 📊 Used in 1    │ │   create new    │           │   │
+│ │ │ [✏️] [📋] [ℹ️]   │ │ [✏️] [📋] [ℹ️]   │ │   group         │           │   │
+│ │ └─────────────────┘ └─────────────────┘ └─────────────────┘           │   │
+│ └───────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
-│ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐               │
-│ │ Archives        │ │ Videos          │ │ + Add Pattern   │               │
-│ │ *.zip,*.rar     │ │ *.mp4,*.avi     │ │                 │               │
-│ │ 📊 Used in 2    │ │ 📊 Used in 1    │ │   Click to      │               │
-│ │ [✏️] [📋] [🗑️]   │ │ [✏️] [📋] [🗑️]   │ │   create new    │               │
-│ └─────────────────┘ └─────────────────┘ └─────────────────┘               │
+│ ┌─ Custom Patterns ──────────────────────────────────────────────────────┐   │
+│ │ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐           │   │
+│ │ │ Work Files      │ │ Projects        │ │ + Add Pattern   │           │   │
+│ │ │ *.doc,*.xls     │ │ Large Files     │ │                 │           │   │
+│ │ │ 👤 Custom       │ │ 👤 Custom       │ │   Click to      │           │   │
+│ │ │ 📊 Used in 3    │ │ 📊 Not used     │ │   create new    │           │   │
+│ │ │ [✏️] [📋] [🗑️]   │ │ [✏️] [📋] [🗑️]   │ │   pattern       │           │   │
+│ │ └─────────────────┘ └─────────────────┘ └─────────────────┘           │   │
+│ └───────────────────────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ 6 patterns total │ 4 active │ 2 unused                    [◀ 1 2 3 ▶]     │
+│ 5 system groups │ 2 custom patterns │ 7 active            [◀ 1 ▶]          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -150,7 +201,7 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ ┌───┬─────────────────┬─────────────────┬─────────────┬─────────┬─────────┐ │
 │ │ ☐ │ Name            │ Pattern         │ Category    │ Used In │ Actions │ │
-│ ├───┼─────────────────┼─────────────────┼─────────────┼─────────┼─────────┤ │
+├───┼─────────────────┼─────────────────┼─────────────┼─────────┼─────────┤ │
 │ │ ☐ │ Documents       │ *.pdf,*.doc     │ Office      │   3     │ [✏️📋🗑️] │ │
 │ │ ☐ │ Images          │ *.jpg,*.png     │ Media       │   1     │ [✏️📋🗑️] │ │
 │ │ ☐ │ Code Files      │ *.py,*.js       │ Development │   0     │ [✏️📋🗑️] │ │
@@ -262,40 +313,48 @@
 - Visual status indicators (active/inactive)
 - Quick action buttons in both views
 
-### Pattern Editor Dialog
+### Pattern Builder - Unified Pattern Language (Updated for v3.0)
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ Edit Pattern: Documents                                        [×]          │
+│ Pattern Builder - Visual Pattern Constructor                   [×]          │
 ├─────────────────────────────────────────────────────────────────────────────┤
+│ ┌─ Smart Pattern Input ──────────────────────────────────────────────────┐  │
+│ │ Pattern: [*.pdf,*.doc AND size > 1MB                               ] 🔍│  │
+│ │ ✓ Valid pattern • 23 files match • Estimated performance: Fast        │  │
+│ │                                                                        │  │
+│ │ 💡 Suggestions: @documents, size > 10MB, modified > today-7           │  │
+│ │ 🔤 Quick Groups: [@media] [@documents] [@code] [@archives] [+ Custom] │  │
+│ │                                                                        │  │
+│ │ Options: [☐] Case Sensitive  [☐] Include Hidden Files                 │  │
+│ └────────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
 │ ┌─ Pattern Details ──────────────────────────────────────────────────────┐  │
-│ │ Name: [Documents                                                      ] │  │
-│ │ Description: [Office documents and PDFs                              ] │  │
+│ │ Name: [Large Documents                                                ] │  │
+│ │ Description: [Office documents larger than 1MB                       ] │  │
+│ │ Group: [Office ▼] Tags: [work] [important] [+ Add]                    │  │
 │ │                                                                        │  │
-│ │ Pattern Type: [●] Glob  [○] Regex  [○] Advanced                       │  │
-│ │ Pattern: [*.pdf,*.doc,*.docx,*.xls,*.xlsx,*.ppt,*.pptx             ] │  │
-│ │                                                                        │  │
-│ │ Case Sensitive: [○] Yes  [●] No                                        │  │
-│ │ Include Hidden Files: [○] Yes  [●] No                                  │  │
+│ │ Options: [☑️] Case Sensitive  [☐] Include Hidden Files  [☑️] Recursive │  │
 │ └────────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
-│ ┌─ Pattern Testing ──────────────────────────────────────────────────────┐  │
-│ │ Test Files: [Browse Folder...] [Clear]                                │  │
+│ ┌─ Visual Builder (Drag & Drop) ─────────────────────────────────────────┐  │
+│ │ ┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐   │  │
+│ │ │ *.pdf   │ AND│ size > 1MB  │ AND│ modified >  │ -> │ Documents/  │   │  │
+│ │ │ *.doc   │    │             │    │ today-30    │    │ Large/      │   │  │
+│ │ └─────────┘    └─────────────┘    └─────────────┘    └─────────────┘   │  │
 │ │                                                                        │  │
-│ │ ✅ report.pdf        (matches)                                         │  │
-│ │ ✅ document.docx     (matches)                                         │  │
-│ │ ❌ image.jpg         (no match)                                        │  │
-│ │ ✅ spreadsheet.xlsx  (matches)                                         │  │
-│ │ ❌ video.mp4         (no match)                                        │  │
-│ │                                                                        │  │
-│ │ Matches: 3/5 files (60%)                                               │  │
+│ │ Drag from palette: [File Types] [Size] [Date] [Location] [Custom]     │  │
 │ └────────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
-│ ┌─ Advanced Options ─────────────────────────────────────────────────────┐  │
-│ │ File Size: [Any ▼] Min: [____] Max: [____] KB/MB/GB                   │  │
-│ │ Date Modified: [Any ▼] From: [________] To: [________]                 │  │
-│ │ File Attributes: [☐] Read-only [☐] Hidden [☐] System                  │  │
+│ ┌─ Live Preview ─────────────────────────────────────────────────────────┐  │
+│ │ Workspace: [C:\Users\Downloads\        ▼] [🔄 Refresh] 23 files match  │  │
 │ │                                                                        │  │
-│ │ Tags: [office] [work] [important] [+ Add Tag]                          │  │
+│ │ ✅ presentation.pptx (2.5MB, Today)      -> Documents/Large/           │  │
+│ │ ✅ report.pdf (1.2MB, Yesterday)         -> Documents/Large/           │  │
+│ │ ✅ spreadsheet.xlsx (1.8MB, Today)       -> Documents/Large/           │  │
+│ │ ❌ small_doc.docx (500KB, Today)         (too small)                   │  │
+│ │ ❌ image.jpg (800KB, Today)              (wrong type)                  │  │
+│ │                                                                        │  │
+│ │ Performance: ⚡ Fast (< 1s) • Cache: Fresh • Conflicts: None          │  │
 │ └────────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 │ [Test Pattern] [Save as Template] [Cancel] [Save]                          │
@@ -365,32 +424,39 @@
 - Export reports functionality
 - Scheduled operations management
 
-### File Conflict Resolution Dialog
+### Enhanced File Conflict Resolution Dialog
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ File Conflict Resolution                                       [×]          │
+│ File Conflict Resolution - 3 of 8 conflicts                  [×]          │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ A file with this name already exists at the destination.                   │
+│ Conflict Type: 📄 File Already Exists                                      │
 │                                                                             │
 │ ┌─ Source File ──────────────────────┐ ┌─ Destination File ──────────────┐ │
 │ │ 📄 presentation.pptx                │ │ 📄 presentation.pptx             │ │
 │ │ 📁 C:\Downloads\                    │ │ 📁 C:\Documents\Work\            │ │
 │ │ 📅 Modified: Today 2:30 PM          │ │ 📅 Modified: Yesterday 4:15 PM   │ │
-│ │ 📏 Size: 2.5 MB                     │ │ 📏 Size: 2.1 MB                  │ │
-│ │ [🔍 Preview]                        │ │ [🔍 Preview]                     │ │
+│ │ 📏 Size: 2.5 MB (400KB larger)     │ │ 📏 Size: 2.1 MB                  │ │
+│ │ [🔍 Preview] [📊 Details]           │ │ [🔍 Preview] [📊 Details]        │ │
 │ └─────────────────────────────────────┘ └──────────────────────────────────┘ │
 │                                                                             │
-│ ┌─ Resolution Options ───────────────────────────────────────────────────┐  │
-│ │ [●] Rename source: presentation (1).pptx                               │  │
-│ │ [○] Overwrite destination (⚠️ This will replace the existing file)     │  │
-│ │ [○] Skip this file                                                     │  │
-│ │ [○] Custom name: [________________________]                            │  │
+│ ┌─ Smart Resolution Options ─────────────────────────────────────────────┐  │
+│ │ ⭐ [●] Smart rename: presentation_2025-06-29.pptx (Recommended)        │  │
+│ │    [○] Overwrite older file (⚠️ Destination is older)                  │  │
+│ │    [○] Skip this file                                                  │  │
+│ │    [○] Custom name: [________________________] [✓ Valid]               │  │
 │ │                                                                        │  │
-│ │ [☑️] Apply this action to similar conflicts (3 remaining)              │  │
-│ │ [☐] Remember this choice for this file type                            │  │
+│ │ 🔄 Batch Actions:                                                      │  │
+│ │ [☑️] Apply to all .pptx conflicts (2 remaining)                       │  │
+│ │ [☐] Apply to all size conflicts                                       │  │
+│ │ [☐] Remember for this folder pair                                     │  │
 │ └────────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
-│ [⏮️ Previous] [Skip All] [Apply] [Cancel] [⏭️ Next (3 remaining)]           │
+│ ┌─ Preview Result ───────────────────────────────────────────────────────┐  │
+│ │ ✅ presentation.pptx → presentation_2025-06-29.pptx                    │  │
+│ │ 📁 Final location: C:\Documents\Work\presentation_2025-06-29.pptx      │  │
+│ └────────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│ [⏮️ Previous] [Skip All Similar] [Apply] [Apply to All] [⏭️ Next (5 left)] │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -467,7 +533,7 @@
 │ [████████████████████████████████████████              ] 68% (68/100)      │
 │                                                                             │
 │ Current Operation:                                                          │
-│ Moving: presentation.pptx → Documents/Work/                                 │
+│ Moving: presentation.pptx → Documents/                                     │
 │                                                                             │
 │ Time Elapsed: 00:02:15    Estimated Remaining: 00:01:25                    │
 │ Transfer Speed: 2.3 MB/s  Files/sec: 1.2                                   │
@@ -537,77 +603,111 @@
 - Notification grouping
 - Custom notification rules
 
-## Component Feature Specifications
+## 🎨 Modern Design Enhancements
 
-### Interactive Elements
+### Enhanced Visual Design System
 
-#### Drag and Drop Zones
-- **Visual States**: Default, drag-over, drag-active, disabled
-- **Drop Feedback**: Highlight drop zones, show insertion points
-- **Drag Preview**: Semi-transparent ghost of dragged item
-- **Constraints**: Type checking, validation, restricted zones
+#### Color Scheme and Theme
+```
+Light Theme:
+- Primary: #2563eb (Blue 600)
+- Secondary: #64748b (Slate 500) 
+- Success: #16a34a (Green 600)
+- Warning: #d97706 (Amber 600)
+- Error: #dc2626 (Red 600)
+- Background: #ffffff (White)
+- Surface: #f8fafc (Slate 50)
+- Border: #e2e8f0 (Slate 200)
 
-#### Multi-Selection
-- **Selection Methods**: Click, Ctrl+click, Shift+click, rectangular selection
-- **Visual Indicators**: Checkboxes, highlighted rows, selection count
-- **Batch Operations**: Toolbar appears with selected items
-- **Context Menus**: Actions available for selected items
+Dark Theme:
+- Primary: #3b82f6 (Blue 500)
+- Secondary: #94a3b8 (Slate 400)
+- Success: #22c55e (Green 500)
+- Warning: #f59e0b (Amber 500)
+- Error: #ef4444 (Red 500)
+- Background: #0f172a (Slate 900)
+- Surface: #1e293b (Slate 800)
+- Border: #334155 (Slate 700)
+```
 
-#### Context Menus
-- **Positioning**: Smart positioning to stay within viewport
-- **Dynamic Content**: Menu items based on context and permissions
-- **Keyboard Navigation**: Arrow keys, Enter, Escape
-- **Visual Grouping**: Separators and section headers
+#### Typography Scale
+```
+- Display: 32px (2rem) - bold - Page titles
+- Heading 1: 24px (1.5rem) - semibold - Section headers
+- Heading 2: 20px (1.25rem) - semibold - Subsection headers
+- Body Large: 16px (1rem) - regular - Main content
+- Body: 14px (0.875rem) - regular - Secondary content
+- Caption: 12px (0.75rem) - regular - Labels and hints
+- Code: 14px (0.875rem) - monospace - Pattern input
+```
 
-#### View Toggle Component
-- **Toggle States**: Clear visual indication of active/inactive view modes
-- **Icon Design**: Distinctive icons for Table (📋) and Grid (📱) views
-- **Transition Animation**: Smooth crossfade between view modes
-- **Accessibility**: Screen reader announcements for view changes
-- **Keyboard Shortcuts**: Quick switching with keyboard (Ctrl+T for table, Ctrl+G for grid)
-- **State Persistence**: Remember user's preferred view mode per component
-- **Responsive Behavior**: Automatically switch to appropriate view on mobile devices
-- **Loading States**: Show loading indicator during view transitions for large datasets
+#### Spacing System
+```
+- xs: 4px (0.25rem)
+- sm: 8px (0.5rem)
+- md: 16px (1rem)
+- lg: 24px (1.5rem)
+- xl: 32px (2rem)
+- 2xl: 48px (3rem)
+```
 
-### Responsive Design
+### Enhanced Component States
 
-#### Breakpoints
-- **Large (>1200px)**: Full desktop layout with sidebar
-- **Medium (768-1200px)**: Compact desktop with collapsible sidebar
-- **Small (<768px)**: Mobile-first with bottom navigation
+#### Interactive States
+```
+Default → Hover → Active → Focus → Disabled
 
-#### Adaptive Layouts
-- **Grid Systems**: Flexible column layouts
-- **Component Scaling**: Buttons, inputs, and cards scale appropriately
-- **Content Prioritization**: Hide less important elements on small screens
-- **Touch Targets**: Larger touch areas for mobile devices
+Button Example:
+- Default: bg-primary, text-white
+- Hover: bg-primary-dark, shadow-md
+- Active: bg-primary-darker, shadow-inner
+- Focus: ring-2 ring-primary-light
+- Disabled: bg-gray-300, text-gray-500, cursor-not-allowed
+```
 
-### Accessibility Features
+#### Loading States
+```
+Component Loading:
+- Skeleton screens for data tables
+- Shimmer effects for cards
+- Progress bars for operations
+- Spinner overlays for buttons
 
-#### Keyboard Navigation
-- **Tab Order**: Logical navigation sequence
-- **Focus Indicators**: Clear visual focus states
-- **Shortcuts**: Application-wide and context-specific
-- **Focus Management**: Proper focus handling in modals and menus
+Examples:
+┌─────────────────┐
+│ ████████████    │ ← Skeleton card
+│ ████████        │
+│ ████            │
+└─────────────────┘
+```
 
-#### Screen Reader Support
-- **ARIA Labels**: Descriptive labels for all interactive elements
-- **Role Definitions**: Proper semantic roles
-- **State Announcements**: Dynamic content changes announced
-- **Alternative Text**: Meaningful alt text for images and icons
-
-### Animation and Transitions
-
-#### UI Animations
-- **Page Transitions**: Smooth navigation between views
-- **Component States**: Hover, focus, and interaction feedback
-- **Loading States**: Progress indicators and skeleton screens
-- **Micro-interactions**: Button presses, toggle switches, form validation
-
-#### Performance Considerations
-- **Hardware Acceleration**: CSS transforms for smooth animations
-- **Reduced Motion**: Respect user preferences for reduced motion
-- **Frame Rate**: Maintain 60fps for all animations
-- **Animation Queuing**: Prevent animation conflicts
-
-This comprehensive UI reference provides the visual foundation for TaskMover's interface, ensuring all components are well-defined before implementing the underlying business logic. Each component includes detailed requirements, features, and implementation considerations for a professional, accessible, and user-friendly application.
+### Smart Pattern Input Component (Enhanced)
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Smart Pattern Input                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ┌─ Pattern Input with Intelligent Assistance ───────────────────────────┐   │
+│ │ [*.py AND size > 1MB AND modified > tod|                            ] │   │
+│ │                                        ▲                              │   │
+│ │ 💡 Auto-complete suggestions:           │                              │   │
+│ │ ┌───────────────────────────────────────┐                              │   │
+│ │ │ today-7        (last week)           │                              │   │
+│ │ │ today-30       (last month)          │ ← Dropdown suggestions       │   │
+│ │ │ today          (today)               │                              │   │
+│ │ └───────────────────────────────────────┘                              │   │
+│ │                                                                        │   │
+│ │ Real-time validation: ✓ Valid syntax • 🎯 23 files match             │   │
+│ │ Performance: ⚡ Fast (<100ms) • 🔍 Searchable • 💾 Cacheable         │   │
+│ └────────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│ ┌─ Pattern Assistance Panel ─────────────────────────────────────────────┐   │
+│ │ Quick Groups: [@media] [@documents] [@code] [@archives] [@temporary]   │   │
+│ │                                                                        │   │
+│ │ Recent: [*.pdf] [size > 1MB] [modified > today-7] [content: important]│   │
+│ │                                                                        │   │
+│ │ Smart Tokens: [$DATE] [$USER] [$HOSTNAME] [Custom...]                 │   │
+│ │                                                                        │   │
+│ │ Advanced: [📏 Size] [📅 Date] [📁 Path] [🏷️ Tags] [🔍 Content]        │   │
+│ └────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```

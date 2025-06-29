@@ -72,3 +72,26 @@ class FileOperationException(TaskMoverException):
     """Raised when file operations fail"""
 
     pass
+
+# Legacy exception aliases for backward compatibility
+TaskMoverError = TaskMoverException
+
+
+class PatternError(TaskMoverException):
+    """Raised when pattern operations fail"""
+    pass
+
+
+class RuleError(TaskMoverException):
+    """Raised when rule operations fail"""
+    pass
+
+
+class FileOperationError(TaskMoverException):
+    """Raised when file operations fail"""
+    pass
+
+
+class ConflictResolutionError(TaskMoverException):
+    """Raised when file conflict resolution fails"""
+    pass

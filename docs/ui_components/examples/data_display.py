@@ -4,10 +4,14 @@ Data Display Example
 Demonstrates how to display data using TaskMover UI components.
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
 import tkinter as tk
 
-from ui.data_display_components import DataTable, ListView
-from ui.layout_components import Panel, Splitter
+from taskmover.ui.data_display_components import DataTable, ListView
+from taskmover.ui.layout_components import Panel, Splitter
 
 
 class DataDisplayExample:

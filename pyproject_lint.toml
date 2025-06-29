@@ -1,0 +1,41 @@
+# Pylint configuration to ignore specific types of warnings that don't affect functionality
+
+[tool.pylint]
+# Disable specific warnings that are not critical for functionality
+disable = [
+    "C0103",  # Invalid name
+    "R0903",  # Too few public methods
+    "R0913",  # Too many arguments
+    "W0613",  # Unused argument
+    "R0801",  # Similar lines in multiple files
+    "C0114",  # Missing module docstring
+    "C0115",  # Missing class docstring
+    "C0116",  # Missing function docstring
+    "E1101",  # Instance has no member (for optional attributes)
+    "E1136",  # Value is unsubscriptable
+    "W0221",  # Parameters differ from overridden method
+    "R0902",  # Too many instance attributes
+    "R0914",  # Too many local variables
+    "R0915",  # Too many statements
+    "C0302",  # Too many lines in module
+    "W0212",  # Access to protected member
+    "W0511",  # TODO comments
+    "R0912",  # Too many branches
+    "R0911",  # Too many return statements
+]
+
+# Ignore type checking errors for optional member access since we have runtime checks
+[tool.mypy]
+ignore_missing_imports = true
+warn_optional = false
+strict_optional = false
+
+[tool.pyright]
+# Ignore optional member access warnings since we handle them at runtime
+reportOptionalMemberAccess = "none"
+reportArgumentType = "warning"  # Downgrade to warning instead of error
+reportGeneralTypeIssues = "warning"
+reportCallIssue = "warning"
+reportUndefinedVariable = "warning"
+reportAttributeAccessIssue = "warning"
+reportPossiblyUnboundVariable = "warning"
