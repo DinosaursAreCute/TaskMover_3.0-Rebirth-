@@ -2,361 +2,331 @@
 Rule Management Components
 =========================
 
-Components for creating, editing, and managing file organization rules
-with pattern matching, condition setting, and action configuration.
+Advanced components for managing file organization rules with full integration
+to the Pattern System and Rule System backends. Provides intuitive interfaces
+for rule creation, editing, execution, and monitoring with real-time validation.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
-from typing import Dict, Optional, Any, List, Callable
-from dataclasses import dataclass, field
+from tkinter import ttk, messagebox, filedialog
+from typing import Dict, Optional, Any, List, Callable, Tuple
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from uuid import UUID
+import asyncio
+import threading
 import time
-from .base_component import BaseComponent, ModernButton, ModernCard
+
+from .base_component import BaseComponent, ModernButton, ModernCard, ComponentState
 from .theme_manager import get_theme_manager
 from .input_components import ModernEntry, ModernCombobox, SmartPatternInput
-from .dialog_components import ModernDialog, ConfirmationDialog
+from .dialog_components import ModernDialog, ConfirmationDialog, ProgressDialog
+
+# Import backend services
+from ..core.rules.models import Rule, RuleExecutionResult, ErrorHandlingBehavior
+from ..core.rules.service import RuleService
+from ..core.rules.exceptions import RuleSystemError, RuleValidationError
+from ..core.patterns.models import Pattern
 
 
 @dataclass
-class Rule:
-    """Data class representing a file organization rule."""
-    id: str
-    name: str
-    description: str
-    pattern: str
-    conditions: List[Dict[str, Any]] = field(default_factory=list)
-    actions: List[Dict[str, Any]] = field(default_factory=list)
-    is_active: bool = True
-    priority: int = 0
-    tags: List[str] = field(default_factory=list)
+class RuleDisplayInfo:
+    """Display information for rules in UI components."""
+    rule: Rule
+    pattern_name: str = ""
+    validation_status: str = "unknown"
+    last_execution: Optional[datetime] = None
+    execution_count: int = 0
 
 
-class RuleConditionEditor(BaseComponent):
-    """Editor for rule conditions."""
+class RuleCreationWizard(ModernDialog):
+    """
+    Step-by-step wizard for creating new rules with pattern integration.
+    Guides users through pattern selection, destination setup, and validation.
+    """
     
-    def __init__(self, parent: tk.Widget, condition: Optional[Dict[str, Any]] = None, **kwargs):
-        self.condition = condition or {"type": "file_size", "operator": "greater_than", "value": ""}
-        self.condition_types = [
-            "file_size", "file_age", "file_extension", "file_name", 
-            "directory_depth", "file_count", "custom_pattern"
-        ]
-        self.operators = {
-            "file_size": ["greater_than", "less_than", "equals", "between"],
-            "file_age": ["older_than", "newer_than", "equals", "between"],
-            "file_extension": ["is", "is_not", "contains", "matches"],
-            "file_name": ["contains", "starts_with", "ends_with", "matches", "regex"],
-            "directory_depth": ["greater_than", "less_than", "equals"],
-            "file_count": ["greater_than", "less_than", "equals"],
-            "custom_pattern": ["matches", "not_matches"]
-        }
+    def __init__(self, parent: tk.Widget, rule_service: RuleService, pattern_service, **kwargs):
+        self.rule_service = rule_service
+        self.pattern_service = pattern_service
+        self.created_rule = None
+        self.current_step = 0
+        self.steps = ["Pattern", "Destination", "Settings", "Review"]
         
-        super().__init__(parent, **kwargs)
-    
-    def _create_component(self):
-        """Create condition editor component."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
+        # Wizard data
+        self.selected_pattern_id = None
+        self.destination_path = None
+        self.rule_name = ""
+        self.rule_description = ""
+        self.priority = 5
+        self.error_handling = ErrorHandlingBehavior.CONTINUE_ON_RECOVERABLE
         
-        # Configure main frame
-        self.configure(bg=tokens.colors["background"], relief="solid", bd=1)
-        
-        # Main content frame
-        content_frame = tk.Frame(self, bg=tokens.colors["background"])
-        content_frame.pack(fill="both", expand=True, padx=tokens.spacing["md"], pady=tokens.spacing["md"])
-        
-        # Condition type selection
-        type_frame = tk.Frame(content_frame, bg=tokens.colors["background"])
-        type_frame.pack(fill="x", pady=(0, tokens.spacing["sm"]))
-        
-        tk.Label(
-            type_frame,
-            text="Condition Type:",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_caption"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="left", padx=(0, tokens.spacing["sm"]))
-        
-        self.type_var = tk.StringVar(value=self.condition.get("type", "file_size"))
-        self.type_combo = ModernCombobox(
-            type_frame,
-            textvariable=self.type_var,
-            values=self.condition_types,
-            state="readonly",
-            width=15
+        super().__init__(
+            parent,
+            title="Create New Rule",
+            size=(600, 500),
+            resizable=True,
+            **kwargs
         )
-        self.type_combo.pack(side="left")
-        
-        # Operator selection
-        operator_frame = tk.Frame(content_frame, bg=tokens.colors["background"])
-        operator_frame.pack(fill="x", pady=(0, tokens.spacing["sm"]))
-        
-        tk.Label(
-            operator_frame,
-            text="Operator:",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_caption"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="left", padx=(0, tokens.spacing["sm"]))
-        
-        self.operator_var = tk.StringVar(value=self.condition.get("operator", "greater_than"))
-        self.operator_combo = ModernCombobox(
-            operator_frame,
-            textvariable=self.operator_var,
-            values=self.operators.get(self.type_var.get(), []),
-            state="readonly",
-            width=15
-        )
-        self.operator_combo.pack(side="left")
-        
-        # Value input
-        value_frame = tk.Frame(content_frame, bg=tokens.colors["background"])
-        value_frame.pack(fill="x", pady=(0, tokens.spacing["sm"]))
-        
-        tk.Label(
-            value_frame,
-            text="Value:",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_caption"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="left", padx=(0, tokens.spacing["sm"]))
-        
-        self.value_var = tk.StringVar(value=str(self.condition.get("value", "")))
-        self.value_entry = ModernEntry(
-            value_frame,
-            textvariable=self.value_var,
-            width=20
-        )
-        self.value_entry.pack(side="left", fill="x", expand=True)
-        
-        # Bind events
-        self.type_var.trace_add("write", self._on_type_changed)
-    
-    def _on_type_changed(self, *args):
-        """Handle condition type change."""
-        condition_type = self.type_var.get()
-        operators = self.operators.get(condition_type, [])
-        
-        # Update operator combo
-        self.operator_combo['values'] = operators
-        if operators:
-            self.operator_var.set(operators[0])
-        
-        # Clear value
-        self.value_var.set("")
-    
-    def get_condition(self) -> Dict[str, Any]:
-        """Get current condition configuration."""
-        return {
-            "type": self.type_var.get(),
-            "operator": self.operator_var.get(),
-            "value": self.value_var.get()
-        }
-    
-    def set_condition(self, condition: Dict[str, Any]):
-        """Set condition configuration."""
-        self.condition = condition
-        self.type_var.set(condition.get("type", "file_size"))
-        self.operator_var.set(condition.get("operator", "greater_than"))
-        self.value_var.set(str(condition.get("value", "")))
-
-
-class RuleActionEditor(BaseComponent):
-    """Editor for rule actions."""
-    
-    def __init__(self, parent: tk.Widget, action: Optional[Dict[str, Any]] = None, **kwargs):
-        self.action = action or {"type": "move", "target": "", "create_folder": True}
-        self.action_types = [
-            "move", "copy", "delete", "rename", "organize_by_date", 
-            "organize_by_type", "create_folder", "run_command"
-        ]
-        
-        super().__init__(parent, **kwargs)
-    
-    def _create_component(self):
-        """Create action editor component."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
-        
-        # Configure main frame
-        self.configure(bg=tokens.colors["background"], relief="solid", bd=1)
-        
-        # Main content frame
-        content_frame = tk.Frame(self, bg=tokens.colors["background"])
-        content_frame.pack(fill="both", expand=True, padx=tokens.spacing["md"], pady=tokens.spacing["md"])
-        
-        # Action type selection
-        type_frame = tk.Frame(content_frame, bg=tokens.colors["background"])
-        type_frame.pack(fill="x", pady=(0, tokens.spacing["sm"]))
-        
-        tk.Label(
-            type_frame,
-            text="Action Type:",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_caption"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="left", padx=(0, tokens.spacing["sm"]))
-        
-        self.type_var = tk.StringVar(value=self.action.get("type", "move"))
-        self.type_combo = ModernCombobox(
-            type_frame,
-            textvariable=self.type_var,
-            values=self.action_types,
-            state="readonly",
-            width=15
-        )
-        self.type_combo.pack(side="left")
-        
-        # Target/parameter input
-        target_frame = tk.Frame(content_frame, bg=tokens.colors["background"])
-        target_frame.pack(fill="x", pady=(0, tokens.spacing["sm"]))
-        
-        tk.Label(
-            target_frame,
-            text="Target/Parameter:",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_caption"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="left", padx=(0, tokens.spacing["sm"]))
-        
-        self.target_var = tk.StringVar(value=self.action.get("target", ""))
-        self.target_entry = ModernEntry(
-            target_frame,
-            textvariable=self.target_var,
-            placeholder="Enter target path or parameter..."
-        )
-        self.target_entry.pack(side="left", fill="x", expand=True)
-        
-        # Options
-        options_frame = tk.Frame(content_frame, bg=tokens.colors["background"])
-        options_frame.pack(fill="x")
-        
-        self.create_folder_var = tk.BooleanVar(value=self.action.get("create_folder", True))
-        create_folder_cb = tk.Checkbutton(
-            options_frame,
-            text="Create target folder if it doesn't exist",
-            variable=self.create_folder_var,
-            font=(tokens.fonts["family"], int(tokens.fonts["size_caption"]), tokens.fonts["weight_normal"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"],
-            selectcolor=tokens.colors["background"],
-            activebackground=tokens.colors["background"],
-            activeforeground=tokens.colors["text"]
-        )
-        create_folder_cb.pack(anchor="w")
-        
-        self.preserve_structure_var = tk.BooleanVar(value=self.action.get("preserve_structure", False))
-        preserve_structure_cb = tk.Checkbutton(
-            options_frame,
-            text="Preserve directory structure",
-            variable=self.preserve_structure_var,
-            font=(tokens.fonts["family"], int(tokens.fonts["size_caption"]), tokens.fonts["weight_normal"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"],
-            selectcolor=tokens.colors["background"],
-            activebackground=tokens.colors["background"],
-            activeforeground=tokens.colors["text"]
-        )
-        preserve_structure_cb.pack(anchor="w")
-    
-    def get_action(self) -> Dict[str, Any]:
-        """Get current action configuration."""
-        return {
-            "type": self.type_var.get(),
-            "target": self.target_var.get(),
-            "create_folder": self.create_folder_var.get(),
-            "preserve_structure": self.preserve_structure_var.get()
-        }
-    
-    def set_action(self, action: Dict[str, Any]):
-        """Set action configuration."""
-        self.action = action
-        self.type_var.set(action.get("type", "move"))
-        self.target_var.set(action.get("target", ""))
-        self.create_folder_var.set(action.get("create_folder", True))
-        self.preserve_structure_var.set(action.get("preserve_structure", False))
-
-
-class RuleEditor(ModernDialog):
-    """Dialog for creating and editing rules."""
-    
-    def __init__(self, parent: tk.Widget, rule: Optional[Rule] = None, **kwargs):
-        self.rule = rule
-        self.is_editing = rule is not None
-        self.condition_editors: List[RuleConditionEditor] = []
-        self.action_editors: List[RuleActionEditor] = []
-        
-        title = "Edit Rule" if self.is_editing else "Create New Rule"
-        super().__init__(parent, title, **kwargs)
     
     def _create_dialog_content(self):
-        """Create rule editor dialog content."""
+        """Create wizard content with step navigation."""
         theme = get_theme_manager()
         tokens = theme.get_current_tokens()
         
-        # Configure dialog size
-        self.dialog_window.geometry("800x600")
+        # Header with step indicator
+        header_frame = tk.Frame(self.dialog_window, bg=tokens.colors["background"])
+        header_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=(tokens.spacing["lg"], 0))
         
-        # Main frame with scrollbar
-        main_frame = tk.Frame(self.dialog_window, bg=tokens.colors["background"])
-        main_frame.pack(fill="both", expand=True, padx=tokens.spacing["lg"], pady=tokens.spacing["lg"])
+        self.step_indicator = self._create_step_indicator(header_frame)
+        self.step_indicator.pack(fill="x", pady=(0, tokens.spacing["lg"]))
         
-        # Create notebook for tabbed interface
-        self.notebook = ttk.Notebook(main_frame, style="Modern.TNotebook")
-        self.notebook.pack(fill="both", expand=True, pady=(0, tokens.spacing["lg"]))
+        # Content area for steps
+        self.step_content = tk.Frame(self.dialog_window, bg=tokens.colors["background"])
+        self.step_content.pack(fill="both", expand=True, padx=tokens.spacing["lg"])
         
-        # Basic info tab
-        self._create_basic_info_tab()
+        # Navigation buttons
+        nav_frame = tk.Frame(self.dialog_window, bg=tokens.colors["background"])
+        nav_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=tokens.spacing["lg"])
         
-        # Pattern tab
-        self._create_pattern_tab()
+        self.prev_button = ModernButton(
+            nav_frame,
+            text="← Previous",
+            command=self._previous_step,
+            state="disabled"
+        )
+        self.prev_button.pack(side="left")
         
-        # Conditions tab
-        self._create_conditions_tab()
+        self.next_button = ModernButton(
+            nav_frame,
+            text="Next →",
+            command=self._next_step
+        )
+        self.next_button.pack(side="right", padx=(tokens.spacing["sm"], 0))
         
-        # Actions tab
-        self._create_actions_tab()
-        
-        # Advanced tab
-        self._create_advanced_tab()
-        
-        # Button frame
-        button_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
-        button_frame.pack(fill="x")
-        
-        # Buttons
-        cancel_btn = ModernButton(
-            button_frame,
+        self.cancel_button = ModernButton(
+            nav_frame,
             text="Cancel",
-            command=self._on_cancel,
             variant="secondary",
-            width=100
+            command=self._on_cancel
         )
-        cancel_btn.pack(side="right", padx=(tokens.spacing["sm"], 0))
+        self.cancel_button.pack(side="right")
         
-        save_btn = ModernButton(
-            button_frame,
-            text="Save Rule",
-            command=self._on_save,
-            variant="primary",
-            width=100
-        )
-        save_btn.pack(side="right")
-        
-        # Load existing rule data if editing
-        if self.is_editing and self.rule:
-            self._load_rule_data()
+        # Show first step
+        self._show_step(0)
     
-    def _create_basic_info_tab(self):
-        """Create basic information tab."""
+    def _create_step_indicator(self, parent: tk.Widget) -> tk.Widget:
+        """Create visual step indicator."""
         theme = get_theme_manager()
         tokens = theme.get_current_tokens()
         
-        basic_frame = tk.Frame(self.notebook, bg=tokens.colors["background"])
-        self.notebook.add(basic_frame, text="Basic Info")
+        indicator_frame = tk.Frame(parent, bg=tokens.colors["background"])
         
-        # Rule name
-        name_frame = tk.Frame(basic_frame, bg=tokens.colors["background"])
-        name_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=(tokens.spacing["lg"], tokens.spacing["md"]))
+        self.step_labels = []
+        for i, step in enumerate(self.steps):
+            # Step circle
+            circle_frame = tk.Frame(indicator_frame, bg=tokens.colors["background"])
+            circle_frame.pack(side="left", padx=(0, tokens.spacing["lg"]))
+            
+            circle = tk.Label(
+                circle_frame,
+                text=str(i + 1),
+                font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), "bold"),
+                bg=tokens.colors["surface_variant"],
+                fg=tokens.colors["on_surface_variant"],
+                width=3,
+                height=1,
+                relief="solid",
+                bd=2
+            )
+            circle.pack()
+            
+            # Step label
+            label = tk.Label(
+                circle_frame,
+                text=step,
+                font=(tokens.fonts["family"], int(tokens.fonts["size_caption"])),
+                bg=tokens.colors["background"],
+                fg=tokens.colors["text_secondary"]
+            )
+            label.pack(pady=(tokens.spacing["xs"], 0))
+            
+            self.step_labels.append((circle, label))
+            
+            # Connection line (except for last step)
+            if i < len(self.steps) - 1:
+                line = tk.Frame(
+                    indicator_frame,
+                    bg=tokens.colors["outline"],
+                    height=2
+                )
+                line.pack(side="left", fill="x", expand=True, pady=(15, 0))
+        
+        return indicator_frame
+    
+    def _update_step_indicator(self):
+        """Update step indicator visual state."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        for i, (circle, label) in enumerate(self.step_labels):
+            if i == self.current_step:
+                # Current step
+                circle.configure(
+                    bg=tokens.colors["primary"],
+                    fg=tokens.colors["on_primary"]
+                )
+                label.configure(fg=tokens.colors["text"])
+            elif i < self.current_step:
+                # Completed step
+                circle.configure(
+                    bg=tokens.colors["success"],
+                    fg=tokens.colors["on_success"]
+                )
+                label.configure(fg=tokens.colors["text"])
+            else:
+                # Future step
+                circle.configure(
+                    bg=tokens.colors["surface_variant"],
+                    fg=tokens.colors["on_surface_variant"]
+                )
+                label.configure(fg=tokens.colors["text_secondary"])
+    
+    def _show_step(self, step: int):
+        """Show specific wizard step."""
+        # Clear current content
+        for widget in self.step_content.winfo_children():
+            widget.destroy()
+        
+        # Update current step
+        self.current_step = step
+        self._update_step_indicator()
+        
+        # Show step content
+        if step == 0:
+            self._show_pattern_step()
+        elif step == 1:
+            self._show_destination_step()
+        elif step == 2:
+            self._show_settings_step()
+        elif step == 3:
+            self._show_review_step()
+        
+        # Update navigation buttons
+        if step > 0:
+            self.prev_button.set_state(ComponentState.DEFAULT)
+        else:
+            self.prev_button.set_state(ComponentState.DISABLED)
+        
+        # Update next button text
+        self.next_button.button.configure(
+            text="Create Rule" if step == len(self.steps) - 1 else "Next →"
+        )
+    
+    def _show_pattern_step(self):
+        """Show pattern selection step."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Step title
+        title = tk.Label(
+            self.step_content,
+            text="Select Pattern",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_h3"]), tokens.fonts["weight_bold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        )
+        title.pack(pady=(0, tokens.spacing["lg"]))
+        
+        # Description
+        desc = tk.Label(
+            self.step_content,
+            text="Choose a pattern that matches the files you want to organize.",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"])),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text_secondary"],
+            wraplength=500
+        )
+        desc.pack(pady=(0, tokens.spacing["lg"]))
+        
+        # Pattern selector (placeholder)
+        pattern_frame = tk.Frame(self.step_content, bg=tokens.colors["background"])
+        pattern_frame.pack(fill="x", pady=tokens.spacing["md"])
+        
+        tk.Label(
+            pattern_frame,
+            text="Pattern ID:",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
+        
+        self.pattern_id_var = tk.StringVar()
+        self.pattern_id_entry = ModernEntry(
+            pattern_frame,
+            textvariable=self.pattern_id_var,
+            placeholder="Enter pattern ID..."
+        )
+        self.pattern_id_entry.pack(fill="x")
+    
+    def _show_destination_step(self):
+        """Show destination configuration step."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Step title
+        title = tk.Label(
+            self.step_content,
+            text="Set Destination",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_h3"]), tokens.fonts["weight_bold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        )
+        title.pack(pady=(0, tokens.spacing["lg"]))
+        
+        # Description
+        desc = tk.Label(
+            self.step_content,
+            text="Specify where matching files should be moved.",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"])),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text_secondary"]
+        )
+        desc.pack(pady=(0, tokens.spacing["lg"]))
+        
+        # Directory selection
+        dir_frame = tk.Frame(self.step_content, bg=tokens.colors["background"])
+        dir_frame.pack(fill="x", pady=(0, tokens.spacing["lg"]))
+        
+        tk.Label(
+            dir_frame,
+            text="Destination Directory:",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
+        
+        path_frame = tk.Frame(dir_frame, bg=tokens.colors["background"])
+        path_frame.pack(fill="x")
+        
+        self.dest_path_var = tk.StringVar(value=str(self.destination_path) if self.destination_path else "")
+        self.dest_entry = ModernEntry(
+            path_frame,
+            textvariable=self.dest_path_var,
+            placeholder="Select destination directory..."
+        )
+        self.dest_entry.pack(side="left", fill="x", expand=True, padx=(0, tokens.spacing["sm"]))
+        
+        browse_button = ModernButton(
+            path_frame,
+            text="Browse...",
+            command=self._browse_destination
+        )
+        browse_button.pack(side="right")
+        
+        # Rule name and description
+        name_frame = tk.Frame(self.step_content, bg=tokens.colors["background"])
+        name_frame.pack(fill="x", pady=(0, tokens.spacing["md"]))
         
         tk.Label(
             name_frame,
@@ -366,17 +336,764 @@ class RuleEditor(ModernDialog):
             fg=tokens.colors["text"]
         ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
         
-        self.name_var = tk.StringVar()
-        self.name_entry = ModernEntry(
+        self.name_var = tk.StringVar(value=self.rule_name)
+        name_entry = ModernEntry(
             name_frame,
             textvariable=self.name_var,
             placeholder="Enter rule name..."
         )
-        self.name_entry.pack(fill="x")
+        name_entry.pack(fill="x")
         
-        # Rule description
-        desc_frame = tk.Frame(basic_frame, bg=tokens.colors["background"])
-        desc_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=(0, tokens.spacing["md"]))
+        desc_frame = tk.Frame(self.step_content, bg=tokens.colors["background"])
+        desc_frame.pack(fill="x")
+        
+        tk.Label(
+            desc_frame,
+            text="Description (optional):",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
+        
+        self.desc_var = tk.StringVar(value=self.rule_description)
+        desc_entry = ModernEntry(
+            desc_frame,
+            textvariable=self.desc_var,
+            placeholder="Enter description..."
+        )
+        desc_entry.pack(fill="x")
+    
+    def _show_settings_step(self):
+        """Show rule settings step."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Step title
+        title = tk.Label(
+            self.step_content,
+            text="Rule Settings",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_h3"]), tokens.fonts["weight_bold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        )
+        title.pack(pady=(0, tokens.spacing["lg"]))
+        
+        # Priority setting
+        priority_frame = tk.Frame(self.step_content, bg=tokens.colors["background"])
+        priority_frame.pack(fill="x", pady=(0, tokens.spacing["lg"]))
+        
+        tk.Label(
+            priority_frame,
+            text="Priority (1-10):",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
+        
+        priority_control = tk.Frame(priority_frame, bg=tokens.colors["background"])
+        priority_control.pack(fill="x")
+        
+        self.priority_var = tk.IntVar(value=self.priority)
+        priority_scale = tk.Scale(
+            priority_control,
+            from_=1,
+            to=10,
+            orient="horizontal",
+            variable=self.priority_var,
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"],
+            highlightthickness=0,
+            troughcolor=tokens.colors["surface_variant"]
+        )
+        priority_scale.pack(side="left", fill="x", expand=True, padx=(0, tokens.spacing["md"]))
+        
+        priority_label = tk.Label(
+            priority_control,
+            textvariable=self.priority_var,
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_bold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"],
+            width=3
+        )
+        priority_label.pack(side="right")
+        
+        # Error handling
+        error_frame = tk.Frame(self.step_content, bg=tokens.colors["background"])
+        error_frame.pack(fill="x")
+        
+        tk.Label(
+            error_frame,
+            text="Error Handling:",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
+        
+        self.error_handling_var = tk.StringVar(value=self.error_handling.value)
+        error_combo = ModernCombobox(
+            error_frame,
+            textvariable=self.error_handling_var,
+            values=[e.value for e in ErrorHandlingBehavior],
+            state="readonly"
+        )
+        error_combo.pack(fill="x")
+        
+        # Help text
+        help_text = tk.Label(
+            self.step_content,
+            text="• Priority determines execution order (higher = first)\n"
+                 "• Error handling controls behavior when files can't be moved",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_caption"])),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text_secondary"],
+            justify="left"
+        )
+        help_text.pack(anchor="w", pady=(tokens.spacing["lg"], 0))
+    
+    def _show_review_step(self):
+        """Show rule review and confirmation step."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Step title
+        title = tk.Label(
+            self.step_content,
+            text="Review Rule",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_h3"]), tokens.fonts["weight_bold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        )
+        title.pack(pady=(0, tokens.spacing["lg"]))
+        
+        # Review card
+        review_card = ModernCard(self.step_content)
+        review_card.pack(fill="both", expand=True)
+        
+        # Get pattern info
+        try:
+            pattern = self.pattern_service.get_pattern(self.selected_pattern_id)
+            pattern_name = pattern.name if pattern else "Unknown Pattern"
+            pattern_expr = pattern.expression if pattern else "Unknown"
+        except Exception:
+            pattern_name = "Unknown Pattern"
+            pattern_expr = "Unknown"
+        
+        # Review content
+        review_content = [
+            ("Rule Name", self.name_var.get() if hasattr(self, 'name_var') else self.rule_name),
+            ("Description", self.desc_var.get() if hasattr(self, 'desc_var') else self.rule_description),
+            ("Pattern", f"{pattern_name} ({pattern_expr})"),
+            ("Destination", self.dest_path_var.get() if hasattr(self, 'dest_path_var') else str(self.destination_path)),
+            ("Priority", str(self.priority_var.get() if hasattr(self, 'priority_var') else self.priority)),
+            ("Error Handling", self.error_handling_var.get() if hasattr(self, 'error_handling_var') else self.error_handling.value)
+        ]
+        
+        for label, value in review_content:
+            item_frame = tk.Frame(review_card, bg=tokens.colors["surface"])
+            item_frame.pack(fill="x", padx=tokens.spacing["md"], pady=tokens.spacing["xs"])
+            
+            tk.Label(
+                item_frame,
+                text=f"{label}:",
+                font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+                bg=tokens.colors["surface"],
+                fg=tokens.colors["text"],
+                width=15,
+                anchor="w"
+            ).pack(side="left")
+            
+            tk.Label(
+                item_frame,
+                text=value or "Not specified",
+                font=(tokens.fonts["family"], int(tokens.fonts["size_body"])),
+                bg=tokens.colors["surface"],
+                fg=tokens.colors["text"],
+                anchor="w"
+            ).pack(side="left", fill="x", expand=True, padx=(tokens.spacing["sm"], 0))
+    
+    def _on_pattern_selected(self, pattern_id: UUID):
+        """Handle pattern selection."""
+        self.selected_pattern_id = pattern_id
+    
+    def _browse_destination(self):
+        """Browse for destination directory."""
+        directory = filedialog.askdirectory(
+            title="Select Destination Directory",
+            initialdir=str(self.destination_path) if self.destination_path else ""
+        )
+        if directory:
+            self.dest_path_var.set(directory)
+            self.destination_path = Path(directory)
+    
+    def _previous_step(self):
+        """Go to previous step."""
+        if self.current_step > 0:
+            self._show_step(self.current_step - 1)
+    
+    def _next_step(self):
+        """Go to next step or create rule."""
+        if self.current_step < len(self.steps) - 1:
+            # Validate current step
+            if self._validate_current_step():
+                self._show_step(self.current_step + 1)
+        else:
+            # Create rule
+            self._create_rule()
+    
+    def _validate_current_step(self) -> bool:
+        """Validate current step input."""
+        if self.current_step == 0:
+            # Pattern step
+            if not self.selected_pattern_id:
+                messagebox.showerror("Validation Error", "Please select a pattern.")
+                return False
+        elif self.current_step == 1:
+            # Destination step
+            if not self.dest_path_var.get().strip():
+                messagebox.showerror("Validation Error", "Please select a destination directory.")
+                return False
+            if not self.name_var.get().strip():
+                messagebox.showerror("Validation Error", "Please enter a rule name.")
+                return False
+            
+            # Update internal state
+            self.destination_path = Path(self.dest_path_var.get())
+            self.rule_name = self.name_var.get()
+            self.rule_description = self.desc_var.get()
+        elif self.current_step == 2:
+            # Settings step
+            self.priority = self.priority_var.get()
+            self.error_handling = ErrorHandlingBehavior(self.error_handling_var.get())
+        
+        return True
+    
+    def _create_rule(self):
+        """Create the rule using the backend service."""
+        try:
+            # Validate required fields
+            if not self.selected_pattern_id:
+                raise RuleValidationError("Pattern must be selected")
+            if not self.destination_path:
+                raise RuleValidationError("Destination path must be specified")
+                
+            # Create rule using backend service
+            rule = self.rule_service.create_rule(
+                name=self.rule_name,
+                description=self.rule_description,
+                pattern_id=self.selected_pattern_id,
+                destination_path=self.destination_path,
+                priority=self.priority,
+                error_handling=self.error_handling
+            )
+            
+            self.created_rule = rule
+            messagebox.showinfo("Success", f"Rule '{rule.name}' created successfully!")
+            self._on_ok()
+            
+        except RuleValidationError as e:
+            messagebox.showerror("Validation Error", f"Rule validation failed:\n{e}")
+        except RuleSystemError as e:
+            messagebox.showerror("Error", f"Failed to create rule:\n{e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Unexpected error:\n{e}")
+    
+    def _on_cancel(self):
+        """Handle cancel action."""
+        if messagebox.askyesno("Confirm", "Are you sure you want to cancel rule creation?"):
+            self.result = None
+            self.destroy()
+    
+    def _on_ok(self):
+        """Handle OK action."""
+        self.result = self.created_rule
+        self.destroy()
+
+
+class RuleManagementView(BaseComponent):
+    """
+    Main rule management interface with list view, filtering, and actions.
+    Integrates with Pattern System to show pattern-rule relationships.
+    """
+    
+    def __init__(self, parent: tk.Widget, rule_service: RuleService, pattern_service, **kwargs):
+        self.rule_service = rule_service
+        self.pattern_service = pattern_service
+        self.rules_data: List[RuleDisplayInfo] = []
+        self.selected_rule_id: Optional[UUID] = None
+        self.filter_text = ""
+        self.show_inactive = False
+        
+        super().__init__(parent, **kwargs)
+        self._refresh_rules()
+    
+    def _create_component(self):
+        """Create main rule management interface."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Configure main frame
+        self.configure(bg=tokens.colors["background"])
+        
+        # Header section
+        header_frame = self._create_header()
+        header_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=(tokens.spacing["lg"], 0))
+        
+        # Toolbar section  
+        toolbar_frame = self._create_toolbar()
+        toolbar_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=tokens.spacing["md"])
+        
+        # Main content area
+        content_frame = tk.Frame(self, bg=tokens.colors["background"])
+        content_frame.pack(fill="both", expand=True, padx=tokens.spacing["lg"], pady=(0, tokens.spacing["lg"]))
+        
+        # Rules list
+        self.rules_list = self._create_rules_list(content_frame)
+        self.rules_list.pack(fill="both", expand=True)
+    
+    def _create_header(self) -> tk.Frame:
+        """Create header section with title and stats."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        header_frame = tk.Frame(self, bg=tokens.colors["background"])
+        
+        # Title
+        title_label = tk.Label(
+            header_frame,
+            text="Rule Management",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_heading_1"]), tokens.fonts["weight_bold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        )
+        title_label.pack(side="left")
+        
+        # Stats
+        self.stats_label = tk.Label(
+            header_frame,
+            text="",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_normal"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text_secondary"]
+        )
+        self.stats_label.pack(side="right")
+        
+        return header_frame
+    
+    def _create_toolbar(self) -> tk.Frame:
+        """Create toolbar with filtering and action buttons."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        toolbar_frame = tk.Frame(self, bg=tokens.colors["background"])
+        
+        # Filter section
+        filter_frame = tk.Frame(toolbar_frame, bg=tokens.colors["background"])
+        filter_frame.pack(side="left", fill="x", expand=True)
+        
+        # Search entry
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", self._on_search_changed)
+        
+        search_entry = ModernEntry(
+            filter_frame,
+            textvariable=self.search_var,
+            placeholder="Search rules...",
+            width=30
+        )
+        search_entry.pack(side="left", padx=(0, tokens.spacing["md"]))
+        
+        # Show inactive checkbox
+        self.show_inactive_var = tk.BooleanVar(value=self.show_inactive)
+        self.show_inactive_var.trace_add("write", self._on_filter_changed)
+        
+        inactive_cb = tk.Checkbutton(
+            filter_frame,
+            text="Show inactive rules",
+            variable=self.show_inactive_var,
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_normal"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"],
+            selectcolor=tokens.colors["background"],
+            activebackground=tokens.colors["background"],
+            activeforeground=tokens.colors["text"]
+        )
+        inactive_cb.pack(side="left")
+        
+        # Action buttons
+        action_frame = tk.Frame(toolbar_frame, bg=tokens.colors["background"])
+        action_frame.pack(side="right")
+        
+        self.create_button = ModernButton(
+            action_frame,
+            text="+ Create Rule",
+            command=self._create_rule,
+            variant="primary",
+            width=120
+        )
+        self.create_button.pack(side="left", padx=(0, tokens.spacing["sm"]))
+        
+        self.edit_button = ModernButton(
+            action_frame,
+            text="Edit",
+            command=self._edit_rule,
+            variant="secondary",
+            width=80
+        )
+        self.edit_button.pack(side="left", padx=(0, tokens.spacing["sm"]))
+        self.edit_button.set_state(ComponentState.DISABLED)
+        
+        self.delete_button = ModernButton(
+            action_frame,
+            text="Delete",
+            command=self._delete_rule,
+            variant="danger",
+            width=80
+        )
+        self.delete_button.pack(side="left", padx=(0, tokens.spacing["sm"]))
+        self.delete_button.set_state(ComponentState.DISABLED)
+        
+        self.validate_button = ModernButton(
+            action_frame,
+            text="Validate",
+            command=self._validate_rule,
+            variant="secondary",
+            width=80
+        )
+        self.validate_button.pack(side="left", padx=(0, tokens.spacing["sm"]))
+        self.validate_button.set_state(ComponentState.DISABLED)
+        
+        self.execute_button = ModernButton(
+            action_frame,
+            text="Execute",
+            command=self._execute_rule,
+            variant="primary",
+            width=80
+        )
+        self.execute_button.pack(side="left")
+        self.execute_button.set_state(ComponentState.DISABLED)
+        
+        return toolbar_frame
+    
+    def _create_rules_list(self, parent: tk.Widget) -> tk.Frame:
+        """Create rules list with tree view."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Tree frame
+        tree_frame = tk.Frame(parent, bg=tokens.colors["background"])
+        
+        # Tree columns
+        columns = ("name", "status", "priority", "pattern", "validation", "last_execution")
+        self.tree = ttk.Treeview(
+            tree_frame,
+            columns=columns,
+            show="headings",
+            style="Modern.Treeview"
+        )
+        
+        # Configure columns
+        self.tree.heading("name", text="Rule Name")
+        self.tree.heading("status", text="Status")
+        self.tree.heading("priority", text="Priority")
+        self.tree.heading("pattern", text="Pattern")
+        self.tree.heading("validation", text="Validation")
+        self.tree.heading("last_execution", text="Last Execution")
+        
+        self.tree.column("name", width=200, minwidth=150)
+        self.tree.column("status", width=80, minwidth=60)
+        self.tree.column("priority", width=80, minwidth=60)
+        self.tree.column("pattern", width=120, minwidth=100)
+        self.tree.column("validation", width=100, minwidth=80)
+        self.tree.column("last_execution", width=150, minwidth=120)
+        
+        # Scrollbars
+        v_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        h_scrollbar = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
+        
+        self.tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+        
+        # Pack tree and scrollbars
+        self.tree.pack(side="left", fill="both", expand=True)
+        v_scrollbar.pack(side="right", fill="y")
+        h_scrollbar.pack(side="bottom", fill="x")
+        
+        # Bind events
+        self.tree.bind("<<TreeviewSelect>>", self._on_rule_selected)
+        self.tree.bind("<Double-1>", self._on_rule_double_click)
+        
+        return tree_frame
+    
+    def _refresh_rules(self):
+        """Refresh rules list from backend."""
+        try:
+            # Get rules from backend
+            rules = self.rule_service.list_rules(active_only=False)
+            
+            # Create display info for each rule
+            self.rules_data = []
+            for rule in rules:
+                # Get validation status
+                try:
+                    # Get rule to pass to validation
+                    rule_for_validation = self.rule_service.get_rule(rule.id)
+                    if rule_for_validation:
+                        validation = self.rule_service.validate_rule(rule_for_validation)
+                        status = "Valid" if validation.is_valid else "Invalid"
+                    else:
+                        status = "Not Found"
+                except Exception:
+                    status = "Unknown"
+                
+                self.rules_data.append(RuleDisplayInfo(
+                    rule=rule,
+                    pattern_name="",  # Will be populated when pattern integration is complete
+                    validation_status=status,
+                    last_execution=rule.last_executed,
+                    execution_count=rule.execution_count
+                ))
+            
+            self._update_tree()
+            self._update_stats()
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load rules:\n{e}")
+    
+    def _update_tree(self):
+        """Update tree view with current rules data."""
+        if not hasattr(self, 'tree'):
+            return
+            
+        # Clear existing items
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        # Filter rules based on current filters
+        filtered_rules = self._filter_rules()
+        
+        # Add filtered rules to tree
+        for rule_info in filtered_rules:
+            rule = rule_info.rule
+            
+            # Format last execution
+            last_exec = ""
+            if rule_info.last_execution:
+                last_exec = rule_info.last_execution.strftime("%Y-%m-%d %H:%M")
+            
+            self.tree.insert("", "end", values=(
+                rule.name,
+                "Enabled" if rule.is_enabled else "Disabled",
+                rule.priority,
+                f"Pattern {str(rule.pattern_id)[:8]}...",
+                rule_info.validation_status,
+                last_exec
+            ), tags=(str(rule.id),))
+    
+    def _filter_rules(self) -> List[RuleDisplayInfo]:
+        """Filter rules based on current filter settings."""
+        filtered = []
+        
+        for rule_info in self.rules_data:
+            rule = rule_info.rule
+            
+            # Filter by active/inactive status
+            if not self.show_inactive and not rule.is_enabled:
+                continue
+            
+            # Filter by search text
+            if self.filter_text:
+                search_text = self.filter_text.lower()
+                if (search_text not in rule.name.lower() and 
+                    search_text not in rule.description.lower()):
+                    continue
+            
+            filtered.append(rule_info)
+        
+        return filtered
+    
+    def _update_stats(self):
+        """Update statistics display."""
+        if not hasattr(self, 'stats_label'):
+            return
+            
+        total_rules = len(self.rules_data)
+        active_rules = sum(1 for r in self.rules_data if r.rule.is_enabled)
+        
+        stats_text = f"{total_rules} rules total, {active_rules} active"
+        self.stats_label.configure(text=stats_text)
+    
+    def _on_search_changed(self, *args):
+        """Handle search text change."""
+        self.filter_text = self.search_var.get()
+        self._update_tree()
+    
+    def _on_filter_changed(self, *args):
+        """Handle filter settings change."""
+        self.show_inactive = self.show_inactive_var.get()
+        self._update_tree()
+    
+    def _on_rule_selected(self, event):
+        """Handle rule selection."""
+        selection = self.tree.selection()
+        if selection:
+            item = selection[0]
+            tags = self.tree.item(item, "tags")
+            if tags:
+                rule_id = UUID(tags[0])
+                self.selected_rule_id = rule_id
+                
+                # Enable action buttons
+                self.edit_button.set_state(ComponentState.DEFAULT)
+                self.delete_button.set_state(ComponentState.DEFAULT)
+                self.validate_button.set_state(ComponentState.DEFAULT)
+                self.execute_button.set_state(ComponentState.DEFAULT)
+        else:
+            self.selected_rule_id = None
+            
+            # Disable action buttons
+            self.edit_button.set_state(ComponentState.DISABLED)
+            self.delete_button.set_state(ComponentState.DISABLED)
+            self.validate_button.set_state(ComponentState.DISABLED)
+            self.execute_button.set_state(ComponentState.DISABLED)
+    
+    def _on_rule_double_click(self, event):
+        """Handle double-click on rule."""
+        self._edit_rule()
+    
+    def _create_rule(self):
+        """Open rule creation wizard."""
+        wizard = RuleCreationWizard(
+            self,
+            self.rule_service,
+            self.pattern_service
+        )
+        wizard.wait_window()
+        
+        if wizard.result:
+            self._refresh_rules()
+    
+    def _edit_rule(self):
+        """Edit selected rule."""
+        if not self.selected_rule_id:
+            return
+        
+        try:
+            rule = self.rule_service.get_rule(self.selected_rule_id)
+            if not rule:
+                messagebox.showerror("Error", "Rule not found.")
+                return
+            
+            editor = RuleEditor(self, rule)
+            editor.wait_window()
+            
+            if editor.result:
+                # Update rule in backend
+                self.rule_service.update_rule(editor.result)
+                self._refresh_rules()
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to edit rule:\n{e}")
+    
+    def _delete_rule(self):
+        """Delete selected rule."""
+        if not self.selected_rule_id:
+            return
+        
+        try:
+            rule = self.rule_service.get_rule(self.selected_rule_id)
+            if not rule:
+                messagebox.showerror("Error", "Rule not found.")
+                return
+            
+            # Confirm deletion
+            dialog = ConfirmationDialog(
+                self,
+                title="Confirm Deletion",
+                message=f"Are you sure you want to delete the rule '{rule.name}'?\n\nThis action cannot be undone.",
+                icon="🗑️"
+            )
+            
+            if dialog.show():
+                self.rule_service.delete_rule(self.selected_rule_id)
+                self._refresh_rules()
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete rule:\n{e}")
+    
+    def _validate_rule(self, rule_id: UUID):
+        """Validate selected rule."""
+        try:
+            rule = self.rule_service.get_rule(rule_id)
+            if not rule:
+                messagebox.showerror("Error", "Rule not found.")
+                return
+                
+            validation = self.rule_service.validate_rule(rule)
+            
+            if validation.is_valid:
+                messagebox.showinfo("Validation", "Rule is valid and ready to execute.")
+            else:
+                errors = "\n".join(validation.errors)
+                messagebox.showwarning("Validation", f"Rule has validation errors:\n\n{errors}")
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Validation failed:\n{e}")
+    
+    def _execute_rule(self):
+        """Execute selected rule."""
+        if not self.selected_rule_id:
+            return
+        
+        # Open execution dialog
+        dialog = RuleExecutionDialog(
+            self,
+            self.rule_service,
+            self.selected_rule_id
+        )
+        dialog.wait_window()
+        
+        # Refresh to show updated execution statistics
+        self._refresh_rules()
+
+
+class RuleEditor(ModernDialog):
+    """Dialog for editing rules."""
+    
+    def __init__(self, parent: tk.Widget, rule: Rule, **kwargs):
+        self.rule = rule
+        super().__init__(parent, title=f"Edit Rule: {rule.name}", size=(600, 400), **kwargs)
+    
+    def _create_dialog_content(self):
+        """Create rule editor dialog content."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Main frame
+        main_frame = tk.Frame(self.dialog_window, bg=tokens.colors["background"])
+        main_frame.pack(fill="both", expand=True, padx=tokens.spacing["lg"], pady=tokens.spacing["lg"])
+        
+        # Rule name
+        name_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        name_frame.pack(fill="x", pady=(0, tokens.spacing["md"]))
+        
+        tk.Label(
+            name_frame,
+            text="Rule Name:",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
+        
+        self.name_var = tk.StringVar(value=self.rule.name)
+        name_entry = ModernEntry(
+            name_frame,
+            textvariable=self.name_var,
+            placeholder="Enter rule name..."
+        )
+        name_entry.pack(fill="x")
+        
+        # Description
+        desc_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        desc_frame.pack(fill="x", pady=(0, tokens.spacing["md"]))
         
         tk.Label(
             desc_frame,
@@ -397,17 +1114,57 @@ class RuleEditor(ModernDialog):
             wrap="word"
         )
         self.description_text.pack(fill="x")
+        self.description_text.insert("1.0", self.rule.description)
         
-        # Rule status and priority
-        status_frame = tk.Frame(basic_frame, bg=tokens.colors["background"])
-        status_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=(0, tokens.spacing["md"]))
+        # Destination
+        dest_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        dest_frame.pack(fill="x", pady=(0, tokens.spacing["md"]))
         
-        # Active checkbox
-        self.active_var = tk.BooleanVar(value=True)
-        active_cb = tk.Checkbutton(
-            status_frame,
-            text="Rule is active",
-            variable=self.active_var,
+        tk.Label(
+            dest_frame,
+            text="Destination:",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
+        
+        self.dest_var = tk.StringVar(value=str(self.rule.destination_path))
+        dest_entry = ModernEntry(
+            dest_frame,
+            textvariable=self.dest_var,
+            placeholder="Enter destination path..."
+        )
+        dest_entry.pack(fill="x")
+        
+        # Priority and enabled
+        settings_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        settings_frame.pack(fill="x", pady=(0, tokens.spacing["lg"]))
+        
+        # Priority
+        tk.Label(
+            settings_frame,
+            text="Priority:",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["text"]
+        ).pack(side="left", padx=(0, tokens.spacing["sm"]))
+        
+        self.priority_var = tk.IntVar(value=self.rule.priority)
+        priority_spin = tk.Spinbox(
+            settings_frame,
+            from_=0,
+            to=100,
+            textvariable=self.priority_var,
+            width=5
+        )
+        priority_spin.pack(side="left", padx=(0, tokens.spacing["lg"]))
+        
+        # Enabled checkbox
+        self.enabled_var = tk.BooleanVar(value=self.rule.is_enabled)
+        enabled_cb = tk.Checkbutton(
+            settings_frame,
+            text="Rule is enabled",
+            variable=self.enabled_var,
             font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_normal"]),
             bg=tokens.colors["background"],
             fg=tokens.colors["text"],
@@ -415,639 +1172,288 @@ class RuleEditor(ModernDialog):
             activebackground=tokens.colors["background"],
             activeforeground=tokens.colors["text"]
         )
-        active_cb.pack(side="left")
+        enabled_cb.pack(side="left")
         
-        # Priority
-        tk.Label(
-            status_frame,
-            text="Priority:",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="right", padx=(tokens.spacing["xl"], tokens.spacing["sm"]))
+        # Buttons
+        button_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        button_frame.pack(fill="x")
         
-        self.priority_var = tk.StringVar(value="0")
-        priority_spin = tk.Spinbox(
-            status_frame,
-            from_=0,
-            to=100,
-            textvariable=self.priority_var,
-            width=5,
-            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_normal"])
+        cancel_btn = ModernButton(
+            button_frame,
+            text="Cancel",
+            command=self._on_cancel,
+            variant="secondary",
+            width=100
         )
-        priority_spin.pack(side="right")
+        cancel_btn.pack(side="right", padx=(tokens.spacing["sm"], 0))
         
-        # Tags
-        tags_frame = tk.Frame(basic_frame, bg=tokens.colors["background"])
-        tags_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=(0, tokens.spacing["md"]))
+        save_btn = ModernButton(
+            button_frame,
+            text="Save",
+            command=self._on_save,
+            variant="primary",
+            width=100
+        )
+        save_btn.pack(side="right")
+    
+    def _on_save(self):
+        """Handle save action."""
+        # Update rule with new values
+        self.rule.name = self.name_var.get()
+        self.rule.description = self.description_text.get("1.0", "end-1c").strip()
+        self.rule.destination_path = Path(self.dest_var.get())
+        self.rule.priority = self.priority_var.get()
+        self.rule.is_enabled = self.enabled_var.get()
+        
+        self.result = self.rule
+        self.dialog_window.destroy()
+    
+    def _on_cancel(self):
+        """Handle cancel action."""
+        self.result = None
+        self.dialog_window.destroy()
+
+
+class RuleExecutionDialog(ModernDialog):
+    """Dialog for executing rules with progress tracking."""
+    
+    def __init__(self, parent: tk.Widget, rule_service: RuleService, rule_id: UUID, **kwargs):
+        self.rule_service = rule_service
+        self.rule_id = rule_id
+        self.execution_result = None
+        
+        # Get rule info
+        rule = rule_service.get_rule(rule_id)
+        title = f"Execute Rule: {rule.name}" if rule else "Execute Rule"
+        
+        super().__init__(parent, title=title, size=(600, 500), **kwargs)
+    
+    def _create_dialog_content(self):
+        """Create rule execution dialog content."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Main frame
+        main_frame = tk.Frame(self.dialog_window, bg=tokens.colors["background"])
+        main_frame.pack(fill="both", expand=True, padx=tokens.spacing["lg"], pady=tokens.spacing["lg"])
+        
+        # Rule info
+        rule = self.rule_service.get_rule(self.rule_id)
+        if rule:
+            info_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+            info_frame.pack(fill="x", pady=(0, tokens.spacing["lg"]))
+            
+            tk.Label(
+                info_frame,
+                text=f"Rule: {rule.name}",
+                font=(tokens.fonts["family"], int(tokens.fonts["size_heading_2"]), tokens.fonts["weight_semibold"]),
+                bg=tokens.colors["background"],
+                fg=tokens.colors["text"]
+            ).pack(anchor="w")
+            
+            tk.Label(
+                info_frame,
+                text=f"Destination: {rule.destination_path}",
+                font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_normal"]),
+                bg=tokens.colors["background"],
+                fg=tokens.colors["text_secondary"]
+            ).pack(anchor="w")
+        
+        # Source directory selection
+        source_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        source_frame.pack(fill="x", pady=(0, tokens.spacing["lg"]))
         
         tk.Label(
-            tags_frame,
-            text="Tags (comma-separated):",
+            source_frame,
+            text="Source Directory:",
             font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_semibold"]),
             bg=tokens.colors["background"],
             fg=tokens.colors["text"]
         ).pack(anchor="w", pady=(0, tokens.spacing["xs"]))
         
-        self.tags_var = tk.StringVar()
-        self.tags_entry = ModernEntry(
-            tags_frame,
-            textvariable=self.tags_var,
-            placeholder="e.g., media, documents, cleanup..."
+        path_frame = tk.Frame(source_frame, bg=tokens.colors["background"])
+        path_frame.pack(fill="x")
+        
+        self.source_var = tk.StringVar()
+        source_entry = ModernEntry(
+            path_frame,
+            textvariable=self.source_var,
+            placeholder="Select source directory..."
         )
-        self.tags_entry.pack(fill="x")
-    
-    def _create_pattern_tab(self):
-        """Create pattern matching tab."""
-        pattern_frame = tk.Frame(self.notebook, bg=get_theme_manager().get_current_tokens().colors["background"])
-        self.notebook.add(pattern_frame, text="Pattern")
+        source_entry.pack(side="left", fill="x", expand=True, padx=(0, tokens.spacing["sm"]))
         
-        # Pattern input
-        self.pattern_input = SmartPatternInput(
-            pattern_frame,
-            show_checkboxes=True,
-            allow_multiple=False
-        )
-        self.pattern_input.pack(fill="x", padx=20, pady=20)
-    
-    def _create_conditions_tab(self):
-        """Create conditions tab."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
-        
-        conditions_frame = tk.Frame(self.notebook, bg=tokens.colors["background"])
-        self.notebook.add(conditions_frame, text="Conditions")
-        
-        # Header
-        header_frame = tk.Frame(conditions_frame, bg=tokens.colors["background"])
-        header_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=(tokens.spacing["lg"], tokens.spacing["md"]))
-        
-        tk.Label(
-            header_frame,
-            text="Rule Conditions",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_heading_2"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="left")
-        
-        add_condition_btn = ModernButton(
-            header_frame,
-            text="+ Add Condition",
-            command=self._add_condition,
+        browse_btn = ModernButton(
+            path_frame,
+            text="Browse...",
+            command=self._browse_source,
             variant="secondary",
-            width=120
+            width=80
         )
-        add_condition_btn.pack(side="right")
+        browse_btn.pack(side="right")
         
-        # Conditions container
-        self.conditions_container = tk.Frame(conditions_frame, bg=tokens.colors["background"])
-        self.conditions_container.pack(fill="both", expand=True, padx=tokens.spacing["lg"], pady=(0, tokens.spacing["lg"]))
-    
-    def _create_actions_tab(self):
-        """Create actions tab."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
+        # Options
+        options_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        options_frame.pack(fill="x", pady=(0, tokens.spacing["lg"]))
         
-        actions_frame = tk.Frame(self.notebook, bg=tokens.colors["background"])
-        self.notebook.add(actions_frame, text="Actions")
-        
-        # Header
-        header_frame = tk.Frame(actions_frame, bg=tokens.colors["background"])
-        header_frame.pack(fill="x", padx=tokens.spacing["lg"], pady=(tokens.spacing["lg"], tokens.spacing["md"]))
-        
-        tk.Label(
-            header_frame,
-            text="Rule Actions",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_heading_2"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="left")
-        
-        add_action_btn = ModernButton(
-            header_frame,
-            text="+ Add Action",
-            command=self._add_action,
-            variant="secondary",
-            width=120
-        )
-        add_action_btn.pack(side="right")
-        
-        # Actions container
-        self.actions_container = tk.Frame(actions_frame, bg=tokens.colors["background"])
-        self.actions_container.pack(fill="both", expand=True, padx=tokens.spacing["lg"], pady=(0, tokens.spacing["lg"]))
-    
-    def _create_advanced_tab(self):
-        """Create advanced options tab."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
-        
-        advanced_frame = tk.Frame(self.notebook, bg=tokens.colors["background"])
-        self.notebook.add(advanced_frame, text="Advanced")
-        
-        # Advanced options would go here
-        placeholder_label = tk.Label(
-            advanced_frame,
-            text="Advanced Options\\n(Coming soon)",
+        self.dry_run_var = tk.BooleanVar(value=True)
+        dry_run_cb = tk.Checkbutton(
+            options_frame,
+            text="Dry run (preview only, don't move files)",
+            variable=self.dry_run_var,
             font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_normal"]),
             bg=tokens.colors["background"],
-            fg=tokens.colors["text_secondary"]
+            fg=tokens.colors["text"],
+            selectcolor=tokens.colors["background"],
+            activebackground=tokens.colors["background"],
+            activeforeground=tokens.colors["text"]
         )
-        placeholder_label.pack(expand=True)
-    
-    def _add_condition(self):
-        """Add new condition editor."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
+        dry_run_cb.pack(anchor="w")
         
-        # Create condition editor frame
-        condition_frame = tk.Frame(self.conditions_container, bg=tokens.colors["background"])
-        condition_frame.pack(fill="x", pady=(0, tokens.spacing["md"]))
+        # Progress area
+        self.progress_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        self.progress_frame.pack(fill="both", expand=True, pady=(0, tokens.spacing["lg"]))
         
-        # Create condition editor
-        condition_editor = RuleConditionEditor(condition_frame)
-        condition_editor.pack(side="left", fill="x", expand=True)
+        # Buttons
+        button_frame = tk.Frame(main_frame, bg=tokens.colors["background"])
+        button_frame.pack(fill="x")
         
-        # Remove button
-        remove_btn = ModernButton(
-            condition_frame,
-            text="Remove",
-            command=lambda: self._remove_condition(condition_frame, condition_editor),
-            variant="danger",
-            width=80
-        )
-        remove_btn.pack(side="right", padx=(tokens.spacing["sm"], 0))
-        
-        self.condition_editors.append(condition_editor)
-    
-    def _add_action(self):
-        """Add new action editor."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
-        
-        # Create action editor frame
-        action_frame = tk.Frame(self.actions_container, bg=tokens.colors["background"])
-        action_frame.pack(fill="x", pady=(0, tokens.spacing["md"]))
-        
-        # Create action editor
-        action_editor = RuleActionEditor(action_frame)
-        action_editor.pack(side="left", fill="x", expand=True)
-        
-        # Remove button
-        remove_btn = ModernButton(
-            action_frame,
-            text="Remove",
-            command=lambda: self._remove_action(action_frame, action_editor),
-            variant="danger",
-            width=80
-        )
-        remove_btn.pack(side="right", padx=(tokens.spacing["sm"], 0))
-        
-        self.action_editors.append(action_editor)
-    
-    def _remove_condition(self, frame: tk.Widget, editor: RuleConditionEditor):
-        """Remove condition editor."""
-        if editor in self.condition_editors:
-            self.condition_editors.remove(editor)
-        frame.destroy()
-    
-    def _remove_action(self, frame: tk.Widget, editor: RuleActionEditor):
-        """Remove action editor."""
-        if editor in self.action_editors:
-            self.action_editors.remove(editor)
-        frame.destroy()
-    
-    def _load_rule_data(self):
-        """Load existing rule data into editor."""
-        if not self.rule:
-            return
-        
-        # Basic info
-        self.name_var.set(self.rule.name)
-        self.description_text.insert("1.0", self.rule.description)
-        self.active_var.set(self.rule.is_active)
-        self.priority_var.set(str(self.rule.priority))
-        self.tags_var.set(", ".join(self.rule.tags))
-        
-        # Pattern
-        if hasattr(self, 'pattern_input'):
-            self.pattern_input.set_pattern(self.rule.pattern)
-        
-        # Conditions
-        for condition in self.rule.conditions:
-            self._add_condition()
-            if self.condition_editors:
-                self.condition_editors[-1].set_condition(condition)
-        
-        # Actions
-        for action in self.rule.actions:
-            self._add_action()
-            if self.action_editors:
-                self.action_editors[-1].set_action(action)
-    
-    def _on_save(self):
-        """Handle save button click."""
-        # Validate inputs
-        if not self.name_var.get().strip():
-            messagebox.showerror("Validation Error", "Rule name is required")
-            return
-        
-        # Create rule object
-        rule = Rule(
-            id=self.rule.id if self.rule else f"rule_{int(time.time())}",
-            name=self.name_var.get().strip(),
-            description=self.description_text.get("1.0", "end-1c").strip(),
-            pattern=self.pattern_input.get_pattern() if hasattr(self, 'pattern_input') else "",
-            conditions=[editor.get_condition() for editor in self.condition_editors],
-            actions=[editor.get_action() for editor in self.action_editors],
-            is_active=self.active_var.get(),
-            priority=int(self.priority_var.get()),
-            tags=[tag.strip() for tag in self.tags_var.get().split(",") if tag.strip()]
-        )
-        
-        self.result = rule
-        self.dialog_window.destroy()
-    
-    def _on_cancel(self):
-        """Handle cancel button click."""
-        self.result = None
-        self.dialog_window.destroy()
-
-
-class RuleList(BaseComponent):
-    """Component for displaying and managing rules list."""
-    
-    def __init__(self, parent: tk.Widget, **kwargs):
-        self.rules: List[Rule] = []
-        self.selected_rule: Optional[Rule] = None
-        self.tree: Optional[ttk.Treeview] = None
-        self.callbacks: Dict[str, List[Callable]] = {
-            "rule_selected": [],
-            "rule_edited": [],
-            "rule_deleted": []
-        }
-        
-        super().__init__(parent, **kwargs)
-    
-    def _create_component(self):
-        """Create rules list component."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
-        
-        # Configure main frame
-        self.configure(bg=tokens.colors["background"])
-        
-        # Header
-        header_frame = tk.Frame(self, bg=tokens.colors["background"])
-        header_frame.pack(fill="x", pady=(0, tokens.spacing["md"]))
-        
-        tk.Label(
-            header_frame,
-            text="Rules",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_heading_2"]), tokens.fonts["weight_semibold"]),
-            bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        ).pack(side="left")
-        
-        # Action buttons
-        button_frame = tk.Frame(header_frame, bg=tokens.colors["background"])
-        button_frame.pack(side="right")
-        
-        new_btn = ModernButton(
+        cancel_btn = ModernButton(
             button_frame,
-            text="+ New Rule",
-            command=self._create_new_rule,
+            text="Close",
+            command=self._on_cancel,
+            variant="secondary",
+            width=100
+        )
+        cancel_btn.pack(side="right", padx=(tokens.spacing["sm"], 0))
+        
+        self.execute_button = ModernButton(
+            button_frame,
+            text="Execute",
+            command=self._execute_rule,
             variant="primary",
             width=100
         )
-        new_btn.pack(side="left", padx=(0, tokens.spacing["sm"]))
-        
-        edit_btn = ModernButton(
-            button_frame,
-            text="Edit",
-            command=self._edit_selected_rule,
-            variant="secondary",
-            width=80
-        )
-        edit_btn.pack(side="left", padx=(0, tokens.spacing["sm"]))
-        
-        delete_btn = ModernButton(
-            button_frame,
-            text="Delete",
-            command=self._delete_selected_rule,
-            variant="danger",
-            width=80
-        )
-        delete_btn.pack(side="left")
-        
-        # Rules tree
-        tree_frame = tk.Frame(self, bg=tokens.colors["background"])
-        tree_frame.pack(fill="both", expand=True)
-        
-        columns = ("name", "status", "priority", "pattern", "actions")
-        self.tree = ttk.Treeview(
-            tree_frame,
-            columns=columns,
-            show="headings",
-            style="Modern.Treeview"
-        )
-        
-        # Configure columns
-        self.tree.heading("name", text="Rule Name")
-        self.tree.heading("status", text="Status")
-        self.tree.heading("priority", text="Priority")
-        self.tree.heading("pattern", text="Pattern")
-        self.tree.heading("actions", text="Actions")
-        
-        self.tree.column("name", width=200, minwidth=150)
-        self.tree.column("status", width=80, minwidth=60)
-        self.tree.column("priority", width=80, minwidth=60)
-        self.tree.column("pattern", width=150, minwidth=100)
-        self.tree.column("actions", width=100, minwidth=80)
-        
-        # Scrollbars
-        v_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
-        h_scrollbar = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
-        
-        self.tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
-        
-        # Pack tree and scrollbars
-        self.tree.pack(side="left", fill="both", expand=True)
-        v_scrollbar.pack(side="right", fill="y")
-        h_scrollbar.pack(side="bottom", fill="x")
-        
-        # Bind selection event
-        self.tree.bind("<<TreeviewSelect>>", self._on_selection_changed)
-        self.tree.bind("<Double-1>", self._on_double_click)
-        
-        # Load sample rules
-        self._load_sample_rules()
+        self.execute_button.pack(side="right")
     
-    def _load_sample_rules(self):
-        """Load sample rules for demonstration."""
-        sample_rules = [
-            Rule(
-                id="rule_1",
-                name="Organize Images",
-                description="Move image files to organized folders by date",
-                pattern="*.{jpg,jpeg,png,gif,bmp}",
-                conditions=[{"type": "file_extension", "operator": "is", "value": "jpg,jpeg,png,gif,bmp"}],
-                actions=[{"type": "organize_by_date", "target": "Pictures", "create_folder": True}],
-                is_active=True,
-                priority=10,
-                tags=["media", "images"]
-            ),
-            Rule(
-                id="rule_2",
-                name="Clean Downloads",
-                description="Organize downloaded files by type",
-                pattern="*",
-                conditions=[{"type": "directory_depth", "operator": "equals", "value": "0"}],
-                actions=[{"type": "organize_by_type", "target": "Organized", "create_folder": True}],
-                is_active=True,
-                priority=5,
-                tags=["cleanup", "downloads"]
-            ),
-            Rule(
-                id="rule_3",
-                name="Archive Old Documents",
-                description="Move old documents to archive",
-                pattern="*.{pdf,doc,docx,txt}",
-                conditions=[{"type": "file_age", "operator": "older_than", "value": "365"}],
-                actions=[{"type": "move", "target": "Archive/Documents", "create_folder": True}],
-                is_active=False,
-                priority=1,
-                tags=["documents", "archive"]
+    def _browse_source(self):
+        """Browse for source directory."""
+        directory = filedialog.askdirectory(title="Select Source Directory")
+        if directory:
+            self.source_var.set(directory)
+    
+    def _execute_rule(self):
+        """Execute the rule."""
+        source_path = self.source_var.get().strip()
+        if not source_path:
+            messagebox.showerror("Error", "Please select a source directory.")
+            return
+        
+        if not Path(source_path).exists():
+            messagebox.showerror("Error", "Source directory does not exist.")
+            return
+        
+        # Disable execute button
+        self.execute_button.set_state(ComponentState.DISABLED)
+        
+        # Clear progress area
+        for widget in self.progress_frame.winfo_children():
+            widget.destroy()
+        
+        try:
+            # Show progress
+            progress_label = tk.Label(
+                self.progress_frame,
+                text="Executing rule...",
+                font=(get_theme_manager().get_current_tokens().fonts["family"], 
+                      int(get_theme_manager().get_current_tokens().fonts["size_body"]), 
+                      get_theme_manager().get_current_tokens().fonts["weight_normal"]),
+                bg=get_theme_manager().get_current_tokens().colors["background"],
+                fg=get_theme_manager().get_current_tokens().colors["text"]
             )
-        ]
-        
-        self.rules = sample_rules
-        self._refresh_tree()
-    
-    def _refresh_tree(self):
-        """Refresh tree view with current rules."""
-        if not self.tree:
-            return
-        
-        # Clear existing items
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
-        # Add rules
-        for rule in self.rules:
-            status = "Active" if rule.is_active else "Inactive"
-            actions_text = f"{len(rule.actions)} action(s)"
+            progress_label.pack(pady=get_theme_manager().get_current_tokens().spacing["md"])
             
-            self.tree.insert("", "end", values=(
-                rule.name,
-                status,
-                rule.priority,
-                rule.pattern[:30] + "..." if len(rule.pattern) > 30 else rule.pattern,
-                actions_text
-            ), tags=(rule.id,))
-    
-    def _on_selection_changed(self, event):
-        """Handle tree selection change."""
-        selection = self.tree.selection()
-        if selection:
-            item = selection[0]
-            tags = self.tree.item(item, "tags")
-            if tags:
-                rule_id = tags[0]
-                self.selected_rule = next((r for r in self.rules if r.id == rule_id), None)
-                
-                # Notify callbacks
-                for callback in self.callbacks["rule_selected"]:
-                    callback(self.selected_rule)
-    
-    def _on_double_click(self, event):
-        """Handle double-click on rule."""
-        self._edit_selected_rule()
-    
-    def _create_new_rule(self):
-        """Create new rule."""
-        editor = RuleEditor(self)
-        rule = editor.show()
-        
-        if rule:
-            self.rules.append(rule)
-            self._refresh_tree()
+            # Execute rule
+            result = self.rule_service.execute_rule(
+                rule_id=self.rule_id,
+                source_directory=Path(source_path),
+                dry_run=self.dry_run_var.get()
+            )
             
-            # Notify callbacks
-            for callback in self.callbacks["rule_edited"]:
-                callback(rule)
-    
-    def _edit_selected_rule(self):
-        """Edit selected rule."""
-        if not self.selected_rule:
-            messagebox.showwarning("No Selection", "Please select a rule to edit")
-            return
-        
-        editor = RuleEditor(self, self.selected_rule)
-        updated_rule = editor.show()
-        
-        if updated_rule:
-            # Update rule in list
-            for i, rule in enumerate(self.rules):
-                if rule.id == updated_rule.id:
-                    self.rules[i] = updated_rule
-                    break
+            self._show_execution_results(result)
             
-            self._refresh_tree()
-            
-            # Notify callbacks
-            for callback in self.callbacks["rule_edited"]:
-                callback(updated_rule)
+        except Exception as e:
+            self._show_execution_error(e)
     
-    def _delete_selected_rule(self):
-        """Delete selected rule."""
-        if not self.selected_rule:
-            messagebox.showwarning("No Selection", "Please select a rule to delete")
-            return
+    def _show_execution_results(self, result: RuleExecutionResult):
+        """Show execution results."""
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
         
-        # Confirm deletion
-        dialog = ConfirmationDialog(
-            self,
-            title="Confirm Deletion",
-            message=f"Are you sure you want to delete the rule '{self.selected_rule.name}'?\\n\\nThis action cannot be undone.",
-            icon="🗑️"
+        # Clear progress area
+        for widget in self.progress_frame.winfo_children():
+            widget.destroy()
+        
+        # Show results
+        results_text = (
+            f"Execution completed!\n\n"
+            f"Files matched: {result.files_matched}\n"
+            f"Files {'would be moved' if result.dry_run else 'moved'}: {result.files_moved}\n"
+            f"Files failed: {result.files_failed}\n"
+            f"Execution time: {result.execution_time_ms:.2f}ms\n"
+            f"Status: {result.status.value}"
         )
         
-        if dialog.show():
-            # Remove rule
-            self.rules = [r for r in self.rules if r.id != self.selected_rule.id]
-            self.selected_rule = None
-            self._refresh_tree()
-            
-            # Notify callbacks
-            for callback in self.callbacks["rule_deleted"]:
-                callback()
-    
-    def add_callback(self, event: str, callback: Callable):
-        """Add callback for events."""
-        if event in self.callbacks:
-            self.callbacks[event].append(callback)
-    
-    def get_rules(self) -> List[Rule]:
-        """Get all rules."""
-        return self.rules
-    
-    def get_selected_rule(self) -> Optional[Rule]:
-        """Get selected rule."""
-        return self.selected_rule
-
-
-class RuleManagementView(BaseComponent):
-    """Complete rule management view."""
-    
-    def __init__(self, parent: tk.Widget, **kwargs):
-        self.rule_list: Optional[RuleList] = None
-        self.rule_details: Optional[tk.Frame] = None
+        if result.errors:
+            results_text += f"\n\nErrors:\n" + "\n".join(
+                f"• {error}" for error in result.errors
+            )
         
-        super().__init__(parent, **kwargs)
-    
-    def _create_component(self):
-        """Create rule management view."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
-        
-        # Configure main frame
-        self.configure(bg=tokens.colors["background"])
-        
-        # Create paned window for list and details
-        paned_window = ttk.PanedWindow(self, orient="horizontal", style="Modern.TPanedwindow")
-        paned_window.pack(fill="both", expand=True, padx=tokens.spacing["lg"], pady=tokens.spacing["lg"])
-        
-        # Rules list
-        list_frame = tk.Frame(paned_window, bg=tokens.colors["background"])
-        paned_window.add(list_frame, weight=2)
-        
-        self.rule_list = RuleList(list_frame)
-        self.rule_list.pack(fill="both", expand=True)
-        
-        # Rule details
-        details_frame = tk.Frame(paned_window, bg=tokens.colors["background"])
-        paned_window.add(details_frame, weight=1)
-        
-        self.rule_details = self._create_rule_details(details_frame)
-        
-        # Bind callbacks
-        if self.rule_list:
-            self.rule_list.add_callback("rule_selected", self._on_rule_selected)
-    
-    def _create_rule_details(self, parent: tk.Widget) -> tk.Frame:
-        """Create rule details panel."""
-        theme = get_theme_manager()
-        tokens = theme.get_current_tokens()
-        
-        # Details frame
-        details_frame = tk.Frame(parent, bg=tokens.colors["background"])
-        details_frame.pack(fill="both", expand=True, padx=(tokens.spacing["lg"], 0))
-        
-        # Title
-        title_label = tk.Label(
-            details_frame,
-            text="Rule Details",
-            font=(tokens.fonts["family"], int(tokens.fonts["size_heading_2"]), tokens.fonts["weight_semibold"]),
+        result_label = tk.Label(
+            self.progress_frame,
+            text=results_text,
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"])),
             bg=tokens.colors["background"],
-            fg=tokens.colors["text"]
-        )
-        title_label.pack(fill="x", pady=(0, tokens.spacing["lg"]))
-        
-        # Details content
-        self.details_content = tk.Text(
-            details_frame,
-            font=(tokens.fonts["family"], int(tokens.fonts["size_body"]), tokens.fonts["weight_normal"]),
-            bg="white",
             fg=tokens.colors["text"],
-            relief="solid",
-            bd=1,
-            wrap="word",
-            state="disabled"
+            justify="left"
         )
-        self.details_content.pack(fill="both", expand=True)
+        result_label.pack(fill="both", expand=True, pady=tokens.spacing["lg"])
         
-        # Initially show placeholder
-        self._show_placeholder()
-        
-        return details_frame
+        # Store result and re-enable execute
+        self.execution_result = result
+        self.execute_button.set_state(ComponentState.DEFAULT)
+        self.execute_button.button.configure(text="Execute Again")
     
-    def _show_placeholder(self):
-        """Show placeholder text in details panel."""
-        self.details_content.config(state="normal")
-        self.details_content.delete("1.0", "end")
-        self.details_content.insert("1.0", "Select a rule to view details")
-        self.details_content.config(state="disabled")
+    def _show_execution_error(self, error: Exception):
+        """Show execution error."""
+        # Stop progress
+        if hasattr(self, 'progress_bar'):
+            self.progress_bar.stop()
+        
+        theme = get_theme_manager()
+        tokens = theme.get_current_tokens()
+        
+        # Clear progress area
+        for widget in self.progress_frame.winfo_children():
+            widget.destroy()
+        
+        # Show error
+        error_label = tk.Label(
+            self.progress_frame,
+            text=f"Execution failed:\n\n{str(error)}",
+            font=(tokens.fonts["family"], int(tokens.fonts["size_body"])),
+            bg=tokens.colors["background"],
+            fg=tokens.colors["error"],
+            justify="left"
+        )
+        error_label.pack(pady=tokens.spacing["lg"])
+        
+        # Re-enable execute button
+        self.execute_button.set_state(ComponentState.DEFAULT)
     
-    def _on_rule_selected(self, rule: Optional[Rule]):
-        """Handle rule selection."""
-        if not rule:
-            self._show_placeholder()
-            return
-        
-        # Format rule details
-        details = f"Name: {rule.name}\\n\\n"
-        details += f"Description: {rule.description}\\n\\n"
-        details += f"Status: {'Active' if rule.is_active else 'Inactive'}\\n"
-        details += f"Priority: {rule.priority}\\n\\n"
-        details += f"Pattern: {rule.pattern}\\n\\n"
-        
-        if rule.conditions:
-            details += "Conditions:\\n"
-            for i, condition in enumerate(rule.conditions, 1):
-                details += f"  {i}. {condition.get('type', '')} {condition.get('operator', '')} {condition.get('value', '')}\\n"
-            details += "\\n"
-        
-        if rule.actions:
-            details += "Actions:\\n"
-            for i, action in enumerate(rule.actions, 1):
-                details += f"  {i}. {action.get('type', '')} to {action.get('target', '')}\\n"
-            details += "\\n"
-        
-        if rule.tags:
-            details += f"Tags: {', '.join(rule.tags)}\\n"
-        
-        # Update details content
-        self.details_content.config(state="normal")
-        self.details_content.delete("1.0", "end")
-        self.details_content.insert("1.0", details)
-        self.details_content.config(state="disabled")
+    def _on_cancel(self):
+        """Handle cancel action."""
+        self.result = self.execution_result
+        self.dialog_window.destroy()
+
+
+

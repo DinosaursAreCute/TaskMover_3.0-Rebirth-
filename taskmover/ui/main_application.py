@@ -22,15 +22,22 @@ from .rule_management_components import RuleManagementView
 from .execution_components import ExecutionView
 from .history_components import HistoryAndStatsView
 
+# Import backend services
+from ..core.patterns import PatternSystem
+from ..core.rules.service import RuleService
+from ..core.conflict_resolution import ConflictManager
+
 logger = logging.getLogger(__name__)
 
 
 class MainContentArea(BaseComponent):
     """Main content area with tab-based navigation."""
     
-    def __init__(self, parent: tk.Widget, **kwargs):
+    def __init__(self, parent: tk.Widget, rule_service=None, pattern_service=None, **kwargs):
         self.current_view = "dashboard"
         self.views: Dict[str, tk.Widget] = {}
+        self.rule_service = rule_service
+        self.pattern_service = pattern_service
         
         super().__init__(parent, **kwargs)
     
@@ -215,8 +222,23 @@ class MainContentArea(BaseComponent):
         self.views["rules"] = rules_frame
         
         # Rule management component
-        rule_management = RuleManagementView(rules_frame)
-        rule_management.pack(fill="both", expand=True)
+        if self.rule_service and self.pattern_service:
+            rule_management = RuleManagementView(
+                rules_frame, 
+                rule_service=self.rule_service,
+                pattern_service=self.pattern_service
+            )
+            rule_management.pack(fill="both", expand=True)
+        else:
+            # Fallback if services not available
+            placeholder_label = tk.Label(
+                rules_frame,
+                text="Rule Management\n(Services not available)",
+                font=(get_theme_manager().get_current_tokens().fonts["family"], 16),
+                bg=get_theme_manager().get_current_tokens().colors["background"],
+                fg=get_theme_manager().get_current_tokens().colors["text_secondary"]
+            )
+            placeholder_label.pack(expand=True)
     
     def _create_rulesets_view(self):
         """Create rulesets management view."""
@@ -322,6 +344,10 @@ class TaskMoverApplication:
         self.content_area: Optional[MainContentArea] = None
         self.status_bar: Optional[StatusBar] = None
         
+        # Services
+        self.rule_service = None
+        self.pattern_service = None
+        
         # Setup logging
         self._setup_logging()
         
@@ -343,6 +369,7 @@ class TaskMoverApplication:
         try:
             self._create_main_window()
             self._setup_theme()
+            self._initialize_services()
             self._create_components()
             self._setup_event_handlers()
             self._finalize_setup()
@@ -353,6 +380,34 @@ class TaskMoverApplication:
         except Exception as e:
             logger.error(f"Error running application: {e}")
             raise
+    
+    def _initialize_services(self):
+        """Initialize backend services."""
+        try:
+            # Setup paths
+            storage_path = Path.cwd() / "data"
+            storage_path.mkdir(exist_ok=True)
+            
+            # Initialize PatternSystem
+            self.pattern_service = PatternSystem(storage_path / "patterns")
+            
+            # Initialize ConflictManager 
+            conflict_manager = ConflictManager()
+            
+            # Initialize RuleService
+            self.rule_service = RuleService(
+                pattern_system=self.pattern_service,
+                conflict_manager=conflict_manager,
+                storage_path=storage_path / "rules"
+            )
+            
+            logger.info("Backend services initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize services: {e}")
+            # Create mock services for UI testing
+            self.pattern_service = None
+            self.rule_service = None
     
     def _create_main_window(self):
         """Create main application window."""
@@ -406,7 +461,11 @@ class TaskMoverApplication:
         self.sidebar.pack(side="left", fill="y")
         
         # Main content area
-        self.content_area = MainContentArea(content_container)
+        self.content_area = MainContentArea(
+            content_container,
+            rule_service=self.rule_service,
+            pattern_service=self.pattern_service
+        )
         self.content_area.pack(side="right", fill="both", expand=True)
         
         # Status bar
