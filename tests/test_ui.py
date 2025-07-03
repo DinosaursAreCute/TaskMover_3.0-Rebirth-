@@ -22,12 +22,21 @@ class TestUIComponents(unittest.TestCase):
     
     def setUp(self):
         """Set up test environment."""
-        self.root = tk.Tk()
-        self.root.withdraw()  # Hide window during tests
+        try:
+            self.root = tk.Tk()
+            self.root.withdraw()  # Hide window during tests
+        except tk.TclError:
+            # Skip tests if Tkinter environment is not available
+            self.skipTest("Tkinter environment not available")
     
     def tearDown(self):
         """Clean up test environment."""
-        self.root.destroy()
+        try:
+            if hasattr(self, 'root') and self.root:
+                self.root.destroy()
+        except tk.TclError:
+            # Ignore errors during cleanup
+            pass
     
     def test_import_all_ui_components(self):
         """Test all UI components can be imported."""
@@ -156,15 +165,22 @@ class TestUIIntegration(unittest.TestCase):
             mock_pattern_service.list_patterns.return_value = []
             mock_pattern_service.get_pattern_groups.return_value = []
             
-            root = tk.Tk()
-            root.withdraw()
+            try:
+                root = tk.Tk()
+                root.withdraw()
+            except tk.TclError:
+                self.skipTest("Tkinter environment not available")
+                return
             
             try:
                 pattern_lib = PatternLibrary(root, pattern_service=mock_pattern_service)
                 self.assertIsInstance(pattern_lib, PatternLibrary)
                 print("✓ Component with mock services test passed")
             finally:
-                root.destroy()
+                try:
+                    root.destroy()
+                except tk.TclError:
+                    pass
                 
         except ImportError:
             self.skipTest("Pattern UI components not available")
@@ -185,9 +201,12 @@ class TestUIVisual(unittest.TestCase):
             if not os.getenv('VISUAL_TEST'):
                 self.skipTest("Visual test disabled (set VISUAL_TEST=1 to enable)")
             
-            root = tk.Tk()
-            root.title("TaskMover UI Visual Test")
-            root.geometry("600x400")
+            try:
+                root = tk.Tk()
+                root.title("TaskMover UI Visual Test")
+                root.geometry("600x400")
+            except tk.TclError:
+                self.skipTest("Tkinter environment not available")
             
             theme_manager = get_theme_manager()
             

@@ -10,8 +10,36 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
-from taskmover.ui.base_component import ModernButton
+try:
+    from taskmover.ui.base_component import ModernButton as TaskMoverButton
+    COMPONENTS_AVAILABLE = True
+except ImportError:
+    print("Warning: Custom components not available, using placeholders")
+    COMPONENTS_AVAILABLE = False
+
 from tkinter import messagebox
+
+
+# Placeholder classes for demonstration
+class DragDropManager:
+    """Placeholder for drag & drop functionality."""
+    def make_draggable(self, widget):
+        print(f"Making {widget} draggable")
+    
+    def make_drop_target(self, widget, callback):
+        print(f"Making {widget} a drop target")
+
+
+class MultiSelectionManager:
+    """Placeholder for multi-selection functionality."""
+    def enable_multi_selection(self, widget):
+        print(f"Enabling multi-selection for {widget}")
+
+
+class CustomButton(tk.Button):
+    """Custom button placeholder."""
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
 
 
 class AdvancedFeaturesExample:

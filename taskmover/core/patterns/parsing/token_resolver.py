@@ -122,7 +122,7 @@ class TokenResolver(BasePatternComponent, ITokenResolver):
             
         except Exception as e:
             self._log_error(e, "resolve_tokens", pattern=pattern)
-            raise TokenResolutionError(f"Failed to resolve tokens in pattern '{pattern}': {e}")
+            raise TokenResolutionError(f"Failed to resolve tokens in pattern '{pattern}': {e}", "multiple_tokens", pattern)
     
     def get_available_tokens(self) -> Dict[str, str]:
         """
@@ -192,7 +192,7 @@ class TokenResolver(BasePatternComponent, ITokenResolver):
             return provider(token_args)
         
         # Unknown token
-        raise TokenResolutionError(f"Unknown token: ${token_name}")
+        raise TokenResolutionError(f"Unknown token: ${token_name}", token_name, "")
     
     # Built-in token resolvers
     
@@ -207,7 +207,7 @@ class TokenResolver(BasePatternComponent, ITokenResolver):
                 # Default format: YYYY-MM-DD
                 return now.strftime('%Y-%m-%d')
         except Exception as e:
-            raise TokenResolutionError(f"Invalid date format: {e}")
+            raise TokenResolutionError(f"Invalid date format: {e}", "DATE", "")
     
     def _resolve_time(self, args: str) -> str:
         """Resolve $TIME token with optional format."""
@@ -219,7 +219,7 @@ class TokenResolver(BasePatternComponent, ITokenResolver):
                 # Default format: HH-MM-SS (filename-safe)
                 return now.strftime('%H-%M-%S')
         except Exception as e:
-            raise TokenResolutionError(f"Invalid time format: {e}")
+            raise TokenResolutionError(f"Invalid time format: {e}", "TIME", "")
     
     def _resolve_datetime(self, args: str) -> str:
         """Resolve $DATETIME token."""
@@ -230,7 +230,7 @@ class TokenResolver(BasePatternComponent, ITokenResolver):
             else:
                 return now.strftime('%Y-%m-%d_%H-%M-%S')
         except Exception as e:
-            raise TokenResolutionError(f"Invalid datetime format: {e}")
+            raise TokenResolutionError(f"Invalid datetime format: {e}", "DATETIME", "")
     
     def _resolve_timestamp(self, args: str) -> str:
         """Resolve $TIMESTAMP token."""
@@ -372,7 +372,7 @@ class TokenResolver(BasePatternComponent, ITokenResolver):
     def _resolve_environment(self, args: str) -> str:
         """Resolve $ENV{variable_name} token."""
         if not args:
-            raise TokenResolutionError("ENV token requires variable name: $ENV{VAR_NAME}")
+            raise TokenResolutionError("ENV token requires variable name: $ENV{VAR_NAME}", "ENV", "")
         
         # Support default values: $ENV{VAR_NAME:default_value}
         if ':' in args:
@@ -381,7 +381,7 @@ class TokenResolver(BasePatternComponent, ITokenResolver):
         else:
             var_value = os.environ.get(args.strip())
             if var_value is None:
-                raise TokenResolutionError(f"Environment variable not found: {args}")
+                raise TokenResolutionError(f"Environment variable not found: {args}", "ENV", "")
             return var_value
     
     def _resolve_random(self, args: str) -> str:
@@ -395,13 +395,13 @@ class TokenResolver(BasePatternComponent, ITokenResolver):
                     start, end = map(int, args.split('-'))
                     return str(random.randint(start, end))
                 except ValueError:
-                    raise TokenResolutionError(f"Invalid random range: {args}")
+                    raise TokenResolutionError(f"Invalid random range: {args}", "RANDOM", "")
             else:
                 try:
                     length = int(args)
                     return ''.join(random.choices('0123456789', k=length))
                 except ValueError:
-                    raise TokenResolutionError(f"Invalid random length: {args}")
+                    raise TokenResolutionError(f"Invalid random length: {args}", "RANDOM", "")
         else:
             return str(random.randint(1000, 9999))
     

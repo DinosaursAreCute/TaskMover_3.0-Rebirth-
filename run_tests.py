@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import argparse
 import time
+from typing import Optional
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -154,7 +155,7 @@ def run_gui_test_runner():
         return False
 
 
-def generate_test_report(all_results: list, output_path: str = None):
+def generate_test_report(all_results: list, output_path: Optional[str] = None):
     """Generate a comprehensive test report."""
     total_suites = len(all_results)
     total_tests = sum(r['total_tests'] for r in all_results)

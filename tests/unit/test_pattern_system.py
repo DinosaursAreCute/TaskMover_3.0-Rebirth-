@@ -118,8 +118,8 @@ class TestPatternSystem(unittest.TestCase):
         system = PatternSystem(storage_path=custom_path)
         
         # Should store the custom path
-        if hasattr(system, 'storage_path'):
-            self.assertEqual(system.storage_path, custom_path)
+        if hasattr(system, '_storage_path'):
+            self.assertEqual(system._storage_path, custom_path)
     
     def test_add_pattern(self):
         """Test adding a pattern."""
@@ -309,6 +309,9 @@ class TestPatternSystemMocking(unittest.TestCase):
         try:
             from taskmover.core.patterns import PatternSystem as RealPatternSystem
             system = RealPatternSystem()
+            
+            # Initialize the system to trigger repository creation
+            system.initialize()
             
             # Verify repository was created
             mock_repo_class.assert_called()

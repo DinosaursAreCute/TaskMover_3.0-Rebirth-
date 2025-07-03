@@ -1,79 +1,98 @@
 """
 Dialog Examples
 
-Demonstrates various dialog types using TaskMover UI components.
+Demonstrates dialog components and interactions.
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-
 import tkinter as tk
+from tkinter import messagebox, simpledialog
 
-from taskmover.ui.dialog_components import ConfirmationDialog, InputDialog, MessageDialog
-from taskmover.ui.input_components import CustomButton
-from taskmover.ui.layout_components import Panel
+# Placeholder components
+class InputDialog(tk.Toplevel):
+    def __init__(self, parent, title="Input", prompt="Enter value:"):
+        super().__init__(parent)
+        self.title(title)
+        self.result = None
+        
+        tk.Label(self, text=prompt).pack(pady=10)
+        self.entry = tk.Entry(self)
+        self.entry.pack(pady=5)
+        
+        tk.Button(self, text="OK", command=self.ok_clicked).pack(pady=5)
+    
+    def ok_clicked(self):
+        self.result = self.entry.get()
+        self.destroy()
+
+class MessageDialog:
+    @staticmethod
+    def show_info(title, message):
+        messagebox.showinfo(title, message)
+    
+    @staticmethod
+    def show_error(title, message):
+        messagebox.showerror(title, message)
+
+CustomButton = tk.Button
+
+class Panel(tk.Frame):
+    def __init__(self, parent, title="", **kwargs):
+        super().__init__(parent, **kwargs)
+        if title:
+            label = tk.Label(self, text=title, font=("Arial", 12, "bold"))
+            label.pack(pady=5)
 
 
-class DialogExamples:
+class DialogExamplesDemo:
     def __init__(self, parent):
         self.parent = parent
-        self.create_dialog_buttons()
+        self.create_dialog_demo()
 
-    def create_dialog_buttons(self):
+    def create_dialog_demo(self):
+        # Main panel
         panel = Panel(self.parent, title="Dialog Examples")
         panel.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        # Message dialog button
-        msg_btn = CustomButton(
-            panel, text="Show Message Dialog", command=self.show_message_dialog
-        )
-        msg_btn.pack(pady=10)
-
-        # Confirmation dialog button
-        confirm_btn = CustomButton(
-            panel,
-            text="Show Confirmation Dialog",
-            command=self.show_confirmation_dialog,
-        )
-        confirm_btn.pack(pady=10)
-
         # Input dialog button
         input_btn = CustomButton(
-            panel, text="Show Input Dialog", command=self.show_input_dialog
+            panel,
+            text="Show Input Dialog",
+            command=self.show_input_dialog
         )
         input_btn.pack(pady=10)
 
-    def show_message_dialog(self):
-        dialog = MessageDialog(
-            self.parent, title="Information", message="This is a sample message dialog."
+        # Message dialog buttons
+        info_btn = CustomButton(
+            panel,
+            text="Show Info Dialog",
+            command=self.show_info_dialog
         )
-        dialog.show()
+        info_btn.pack(pady=5)
 
-    def show_confirmation_dialog(self):
-        dialog = ConfirmationDialog(
-            self.parent,
-            title="Confirm Action",
-            message="Are you sure you want to proceed?",
+        error_btn = CustomButton(
+            panel,
+            text="Show Error Dialog",
+            command=self.show_error_dialog
         )
-        result = dialog.show()
-        print(f"Confirmation result: {result}")
+        error_btn.pack(pady=5)
 
     def show_input_dialog(self):
-        dialog = InputDialog(
-            self.parent,
-            title="Enter Value",
-            message="Please enter a value:",
-            default_value="Default text",
-        )
-        result = dialog.show()
-        print(f"Input result: {result}")
+        dialog = InputDialog(self.parent, "User Input", "Enter your name:")
+        self.parent.wait_window(dialog)
+        if dialog.result:
+            print(f"User entered: {dialog.result}")
+
+    def show_info_dialog(self):
+        MessageDialog.show_info("Information", "This is an info message!")
+
+    def show_error_dialog(self):
+        MessageDialog.show_error("Error", "This is an error message!")
 
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Dialog Examples")
-    root.geometry("400x300")
-
-    example = DialogExamples(root)
+    root.geometry("300x250")
+    
+    app = DialogExamplesDemo(root)
     root.mainloop()

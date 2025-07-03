@@ -18,12 +18,27 @@ logger = logging.getLogger(__name__)
 
 # Import theme manager (with fallback for tests)
 try:
-    from .theme_manager import get_theme_manager
+    from .theme_manager import get_theme_manager  # type: ignore[misc]
 except ImportError:
     # Fallback for tests that mock this
-    def get_theme_manager():  # type: ignore
+    def get_theme_manager():  # type: ignore[misc]
+        """Fallback theme manager for testing."""
         from typing import Any
-        return None  # type: ignore
+        
+        class MockThemeManager:
+            def get_color(self, key: str) -> str:
+                return "#000000"
+            
+            def get_font(self, key: str) -> tuple:
+                return ("Arial", 10)
+            
+            def get_current_tokens(self) -> Any:
+                return type('MockTokens', (), {
+                    'colors': {'primary': '#000000', 'surface': '#ffffff'},
+                    'fonts': {'family': 'Arial', 'size_body': 10}
+                })()
+                
+        return MockThemeManager()
 
 
 class ComponentState(Enum):
@@ -216,7 +231,7 @@ class ModernButton(BaseComponent):
     
     def __init__(
         self,
-        parent: tk.Widget,
+        parent: Union[tk.Widget, tk.Tk],
         text: str = "",
         icon: str = "",
         command: Optional[Callable] = None,
@@ -328,6 +343,21 @@ class ModernButton(BaseComponent):
         """Programmatically invoke the button's command for test compatibility."""
         if self.command:
             self.command()
+    
+    def cget(self, option):
+        """Get configuration option value, handling both button and custom attributes."""
+        if hasattr(self, 'button') and hasattr(self.button, 'cget'):
+            try:
+                return self.button.cget(option)
+            except tk.TclError:
+                # Handle custom options that don't exist on the button
+                if option == 'font':
+                    from .theme_manager import get_theme_manager
+                    theme = get_theme_manager()
+                    tokens = theme.get_current_tokens()
+                    return (tokens.fonts["family"], int(tokens.fonts["size_body"]))
+                return None
+        return None
 
 
 class ModernCard(BaseComponent):
@@ -335,7 +365,7 @@ class ModernCard(BaseComponent):
     
     def __init__(
         self,
-        parent: tk.Widget,
+        parent: Union[tk.Widget, tk.Tk, tk.Toplevel],
         title: str = "",
         subtitle: str = "",
         **kwargs
@@ -395,7 +425,7 @@ class ModernCard(BaseComponent):
 class StatusBar(BaseComponent):
     """Status bar component for displaying application status."""
     
-    def __init__(self, parent: tk.Widget, **kwargs):
+    def __init__(self, parent: Union[tk.Widget, tk.Tk], **kwargs):
         self.status_items: Dict[str, tk.Label] = {}
         self.progress_bars: Dict[str, ttk.Progressbar] = {}
         super().__init__(parent, **kwargs)

@@ -87,7 +87,7 @@ class StatisticsCard(BaseComponent):
             )
             subtitle_label.pack()
     
-    def update_value(self, value: str, subtitle: str = None):
+    def update_value(self, value: str, subtitle: Optional[str] = None):
         """Update card value and subtitle."""
         self.value = value
         if subtitle is not None:

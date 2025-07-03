@@ -616,6 +616,7 @@ class RuleManagementView(BaseComponent):
     """
     
     def __init__(self, parent: tk.Widget, rule_service: RuleService, pattern_service, **kwargs):
+        # Store custom parameters before calling super()
         self.rule_service = rule_service
         self.pattern_service = pattern_service
         self.rules_data: List[RuleDisplayInfo] = []
@@ -623,7 +624,9 @@ class RuleManagementView(BaseComponent):
         self.filter_text = ""
         self.show_inactive = False
         
-        super().__init__(parent, **kwargs)
+        # Filter out custom parameters that shouldn't go to tkinter
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in ['rule_service', 'pattern_service']}
+        super().__init__(parent, **filtered_kwargs)
         self._refresh_rules()
     
     def _create_component(self):
@@ -1425,9 +1428,7 @@ class RuleExecutionDialog(ModernDialog):
     
     def _show_execution_error(self, error: Exception):
         """Show execution error."""
-        # Stop progress
-        if hasattr(self, 'progress_bar'):
-            self.progress_bar.stop()
+        # Stop progress - no actual progress bar to stop in this implementation
         
         theme = get_theme_manager()
         tokens = theme.get_current_tokens()

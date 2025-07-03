@@ -271,10 +271,20 @@ class TestThemeIntegration(unittest.TestCase):
         """Test theme manager handles callback errors gracefully."""
         manager = get_theme_manager()
         
+        # Store original observers to restore later
+        original_observers = manager._observers.copy()
+        
+        # Clear observers for clean test
+        manager._observers.clear()
+        
+        callback_calls = []
+        
         def failing_callback(mode):
+            callback_calls.append(("failing", mode))
             raise Exception("Callback error")
         
         def working_callback(mode):
+            callback_calls.append(("working", mode))
             self.last_callback_mode = mode
         
         # Register both callbacks
@@ -283,11 +293,21 @@ class TestThemeIntegration(unittest.TestCase):
         
         # Change theme - should not raise exception
         try:
-            manager.set_theme_mode(ThemeMode.DARK)
-            # Working callback should still be called
-            self.assertEqual(self.last_callback_mode, ThemeMode.DARK)
+            current_mode = manager.current_mode
+            new_mode = ThemeMode.DARK if current_mode != ThemeMode.DARK else ThemeMode.LIGHT
+            manager.set_theme_mode(new_mode)
+            
+            # Both callbacks should have been called
+            self.assertEqual(len(callback_calls), 2)
+            self.assertEqual(callback_calls[0][0], "failing")
+            self.assertEqual(callback_calls[1][0], "working")
+            self.assertEqual(self.last_callback_mode, new_mode)
+            
         except Exception:
             self.fail("Theme change raised exception due to callback error")
+        finally:
+            # Restore original observers
+            manager._observers = original_observers
 
 
 if __name__ == '__main__':

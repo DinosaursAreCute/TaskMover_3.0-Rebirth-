@@ -79,7 +79,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             
         except Exception as e:
             self._log_error(e, "save_pattern", pattern_id=str(pattern.id))
-            raise PatternStorageError(f"Failed to save pattern {pattern.id}: {e}")
+            raise PatternStorageError(f"Failed to save pattern {pattern.id}: {e}", "save")
     
     def get(self, pattern_id: UUID) -> Optional[Pattern]:
         """
@@ -217,7 +217,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             
         except Exception as e:
             self._log_error(e, "delete_pattern", pattern_id=str(pattern_id))
-            raise PatternStorageError(f"Failed to delete pattern {pattern_id}: {e}")
+            raise PatternStorageError(f"Failed to delete pattern {pattern_id}: {e}", "delete")
     
     def save_group(self, group: PatternGroup) -> None:
         """Save a pattern group."""
@@ -238,7 +238,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             
         except Exception as e:
             self._log_error(e, "save_group", group_id=str(group.id))
-            raise PatternStorageError(f"Failed to save group {group.id}: {e}")
+            raise PatternStorageError(f"Failed to save group {group.id}: {e}", "save_group")
     
     def get_group(self, group_id: UUID) -> Optional[PatternGroup]:
         """Retrieve a pattern group by ID."""
@@ -274,7 +274,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             
         except Exception as e:
             self._log_error(e, "delete_group", group_id=str(group_id))
-            raise PatternStorageError(f"Failed to delete group {group_id}: {e}")
+            raise PatternStorageError(f"Failed to delete group {group_id}: {e}", "delete_group")
     
     def get_statistics(self) -> Dict[str, Any]:
         """Get repository statistics."""
@@ -334,7 +334,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             
         except Exception as e:
             self._log_error(e, "backup")
-            raise PatternStorageError(f"Failed to create backup: {e}")
+            raise PatternStorageError(f"Failed to create backup: {e}", "backup")
     
     def restore(self, backup_file: Path) -> None:
         """Restore pattern data from backup."""
@@ -342,7 +342,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             self._log_operation("restore", backup_file=str(backup_file))
             
             if not backup_file.exists():
-                raise PatternStorageError(f"Backup file not found: {backup_file}")
+                raise PatternStorageError(f"Backup file not found: {backup_file}", "restore")
             
             # Load backup data
             with open(backup_file, 'r', encoding='utf-8') as f:
@@ -373,7 +373,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             
         except Exception as e:
             self._log_error(e, "restore", backup_file=str(backup_file))
-            raise PatternStorageError(f"Failed to restore backup: {e}")
+            raise PatternStorageError(f"Failed to restore backup: {e}", "restore")
     
     def _initialize_storage(self) -> None:
         """Initialize storage directory and files."""
@@ -391,7 +391,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             self._logger.debug(f"Storage initialized at {self._storage_path}")
             
         except Exception as e:
-            raise PatternStorageError(f"Failed to initialize storage: {e}")
+            raise PatternStorageError(f"Failed to initialize storage: {e}", "initialize")
     
     def _write_empty_file(self, file_path: Path) -> None:
         """Write an empty data structure to a file."""
@@ -464,7 +464,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
             self._cache_dirty = False
             
         except Exception as e:
-            raise PatternStorageError(f"Failed to persist patterns: {e}")
+            raise PatternStorageError(f"Failed to persist patterns: {e}", "persist_patterns")
     
     def _persist_groups(self) -> None:
         """Persist groups to storage."""
@@ -478,7 +478,7 @@ class PatternRepository(BasePatternComponent, IPatternRepository):
                     json.dump(groups_data, f, indent=2, ensure_ascii=False, default=str)
             
         except Exception as e:
-            raise PatternStorageError(f"Failed to persist groups: {e}")
+            raise PatternStorageError(f"Failed to persist groups: {e}", "persist_groups")
     
     def _pattern_to_dict(self, pattern: Pattern) -> Dict[str, Any]:
         """Convert pattern to dictionary for serialization."""

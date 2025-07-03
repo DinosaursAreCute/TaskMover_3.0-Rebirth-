@@ -75,7 +75,7 @@ class IntelligentPatternParser(BasePatternComponent, IPatternParser):
             
         except Exception as e:
             self._log_error(e, "pattern_compilation")
-            raise PatternParseError(f"Failed to compile detection patterns: {e}")
+            raise PatternParseError(f"Failed to compile detection patterns: {e}", "compilation_error")
     
     def parse(self, user_input: str) -> ParsedPattern:
         """
@@ -95,9 +95,8 @@ class IntelligentPatternParser(BasePatternComponent, IPatternParser):
         try:
             self._log_operation("parse", input_pattern=user_input)
             
-            # Input validation
-            if not user_input or not user_input.strip():
-                raise PatternSyntaxError("Empty pattern input")
+            # Input validation        if not user_input or not user_input.strip():
+            raise PatternSyntaxError("Empty pattern input", user_input)
             
             cleaned_input = user_input.strip()
             
@@ -137,7 +136,7 @@ class IntelligentPatternParser(BasePatternComponent, IPatternParser):
             raise
         except Exception as e:
             self._log_error(e, "parse", input_pattern=user_input)
-            raise PatternParseError(f"Failed to parse pattern '{user_input}': {e}")
+            raise PatternParseError(f"Failed to parse pattern '{user_input}': {e}", user_input)
     
     def validate_syntax(self, user_input: str) -> ValidationResult:
         """

@@ -33,7 +33,7 @@ except ImportError:
     get_theme_manager = None
     THEME_AVAILABLE = False
     
-    # Mock ThemeMode for compatibility
+    # Mock ThemeMode for compatibility when theme manager is not available
     class ThemeMode:
         LIGHT = "light"
         DARK = "dark"
