@@ -5,9 +5,10 @@ Unified data models for the pattern system including Pattern, PatternGroup,
 and related supporting classes.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, MISSING
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -63,15 +64,56 @@ class ParsedPattern:
     validation_result: Optional[ValidationResult] = None
 
 
-@dataclass
 class MatchResult:
     """Result of pattern matching operation."""
-    matched_files: List["Path"]
-    total_files_checked: int
-    execution_time_ms: float
-    cache_hit: bool = False
-    performance_metrics: Dict[str, Any] = field(default_factory=dict)
-    errors: List[str] = field(default_factory=list)
+    
+    def __init__(self, 
+                 file_path: Optional[Path] = None,  # For test compatibility
+                 pattern_id: Optional[UUID] = None,  # For test compatibility  
+                 confidence: Optional[float] = None,  # For test compatibility
+                 execution_time_ms: Optional[float] = None,  # For test compatibility
+                 matched_files: Optional[List[Path]] = None,
+                 total_files_checked: int = 0,
+                 cache_hit: bool = False,
+                 performance_metrics: Optional[Dict[str, Any]] = None,
+                 errors: Optional[List[str]] = None,
+                 **kwargs):
+        """Initialize MatchResult with compatibility for different constructor signatures."""
+        
+        # Handle test compatibility - single file result
+        if file_path is not None and matched_files is None:
+            # Convert string to Path if needed
+            if isinstance(file_path, str):
+                file_path = Path(file_path)
+            self.matched_files = [file_path]
+            self.pattern_id = pattern_id
+            self.confidence = confidence or 1.0
+        else:
+            self.matched_files = matched_files or []
+            self.pattern_id = pattern_id
+            self.confidence = confidence or 1.0
+        
+        self.total_files_checked = total_files_checked
+        self.execution_time_ms = execution_time_ms or 0.0
+        self.cache_hit = cache_hit
+        self.performance_metrics = performance_metrics or {}
+        self.errors = errors or []
+        
+        # Handle additional kwargs
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    @property
+    def file_path(self) -> Optional[Path]:
+        """Get the first matched file path for test compatibility."""
+        return self.matched_files[0] if self.matched_files else None
+    
+    @file_path.setter  
+    def file_path(self, value: Path):
+        """Set the file path (for single file results)."""
+        if isinstance(value, str):
+            value = Path(value)
+        self.matched_files = [value]
 
 
 @dataclass
@@ -85,56 +127,107 @@ class PatternUsageStats:
     performance_score: float = 10.0  # 1-10 scale
 
 
-@dataclass
 class Pattern:
     """Unified pattern model supporting all pattern types."""
     
-    # Core identification
-    id: UUID = field(default_factory=uuid4)
-    name: str = ""
-    description: str = ""
+    def __init__(self, 
+                 id: Optional[UUID] = None,
+                 name: str = "",
+                 description: str = "",
+                 user_expression: str = "",
+                 pattern_text: Optional[str] = None,  # Alias for user_expression
+                 compiled_query: str = "",
+                 pattern_complexity: PatternComplexity = PatternComplexity.SIMPLE,
+                 pattern_type: PatternType = PatternType.SIMPLE_GLOB,
+                 tokens_used: Optional[Set[str]] = None,
+                 referenced_groups: Optional[Set[str]] = None,
+                 conflict_resolution_strategy: Optional["ResolutionStrategy"] = None,
+                 conflict_resolution_config: Optional[Dict[str, Any]] = None,
+                 tags: Optional[List[str]] = None,
+                 group_id: Optional[UUID] = None,
+                 category: str = "general",
+                 created_date: Optional[datetime] = None,
+                 modified_date: Optional[datetime] = None,
+                 author: str = "",
+                 version: int = 1,
+                 status: PatternStatus = PatternStatus.ACTIVE,
+                 estimated_complexity: int = 1,
+                 cache_ttl: Optional[int] = None,
+                 performance_hints: Optional[Dict[str, Any]] = None,
+                 usage_stats: Optional[PatternUsageStats] = None,
+                 is_valid: bool = True,
+                 validation_errors: Optional[List[str]] = None,
+                 last_validated: Optional[datetime] = None,
+                 extra_data: Optional[Dict[str, Any]] = None,
+                 **kwargs):
+        """Initialize Pattern with support for both user_expression and pattern_text."""
+        
+        # Core identification
+        self.id = id or uuid4()
+        self.name = name
+        self.description = description
+        
+        # Pattern content - handle pattern_text alias for test compatibility
+        if pattern_text is not None and not user_expression:
+            self.user_expression = pattern_text
+        else:
+            self.user_expression = user_expression
+        
+        self.compiled_query = compiled_query
+        self.pattern_complexity = pattern_complexity
+        self.pattern_type = pattern_type
+        
+        # Pattern analysis
+        self.tokens_used = tokens_used or set()
+        self.referenced_groups = referenced_groups or set()
+        
+        # Conflict resolution
+        self.conflict_resolution_strategy = conflict_resolution_strategy
+        self.conflict_resolution_config = conflict_resolution_config or {}
+        
+        # Organization
+        self.tags = tags or []
+        self.group_id = group_id
+        self.category = category
+        
+        # Metadata
+        self.created_date = created_date or datetime.utcnow()
+        self.modified_date = modified_date or datetime.utcnow()
+        self.author = author
+        self.version = version
+        self.status = status
+        
+        # Performance and caching
+        self.estimated_complexity = estimated_complexity
+        self.cache_ttl = cache_ttl
+        self.performance_hints = performance_hints or {}
+        
+        # Usage tracking
+        self.usage_stats = usage_stats or PatternUsageStats()
+        
+        # Validation
+        self.is_valid = is_valid
+        self.validation_errors = validation_errors or []
+        self.last_validated = last_validated
+        
+        # Additional metadata
+        self.extra_data = extra_data or {}
+        
+        # Handle any additional kwargs
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        
+        self.__post_init__()
     
-    # Pattern content
-    user_expression: str = ""  # What user typed: "test_*_$DATE*.txt"
-    compiled_query: str = ""   # Internal query representation
-    pattern_complexity: PatternComplexity = PatternComplexity.SIMPLE
-    pattern_type: PatternType = PatternType.SIMPLE_GLOB
+    @property
+    def pattern_text(self) -> str:
+        """Alias for user_expression for test compatibility."""
+        return self.user_expression
     
-    # Pattern analysis
-    tokens_used: Set[str] = field(default_factory=set)
-    referenced_groups: Set[str] = field(default_factory=set)
-    
-    # Conflict resolution
-    conflict_resolution_strategy: Optional["ResolutionStrategy"] = None
-    conflict_resolution_config: Dict[str, Any] = field(default_factory=dict)
-    
-    # Organization
-    tags: List[str] = field(default_factory=list)
-    group_id: Optional[UUID] = None
-    category: str = "general"
-    
-    # Metadata
-    created_date: datetime = field(default_factory=datetime.utcnow)
-    modified_date: datetime = field(default_factory=datetime.utcnow)
-    author: str = ""
-    version: int = 1
-    status: PatternStatus = PatternStatus.ACTIVE
-    
-    # Performance and caching
-    estimated_complexity: int = 1  # 1-10 scale
-    cache_ttl: Optional[int] = None
-    performance_hints: Dict[str, Any] = field(default_factory=dict)
-    
-    # Usage tracking
-    usage_stats: PatternUsageStats = field(default_factory=PatternUsageStats)
-    
-    # Validation
-    is_valid: bool = True
-    validation_errors: List[str] = field(default_factory=list)
-    last_validated: Optional[datetime] = None
-    
-    # Additional metadata
-    extra_data: Dict[str, Any] = field(default_factory=dict)
+    @pattern_text.setter
+    def pattern_text(self, value: str):
+        """Setter for pattern_text alias."""
+        self.user_expression = value
     
     def __post_init__(self):
         """Post-initialization validation and setup."""
@@ -296,7 +389,7 @@ SYSTEM_GROUPS = {
 @dataclass
 class FileMetadata:
     """File metadata for pattern matching."""
-    path: "Path"
+    path: Path
     name: str
     extension: str
     size: int

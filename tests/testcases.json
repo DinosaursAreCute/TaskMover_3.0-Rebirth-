@@ -1,0 +1,162 @@
+{
+  "test_suites": {
+    "unit_tests": {
+      "description": "Unit tests for individual components",
+      "test_files": [
+        "unit/test_core_exceptions.py",
+        "unit/test_theme_manager.py", 
+        "unit/test_base_components.py",
+        "unit/test_pattern_system.py",
+        "unit/test_rule_system.py",
+        "unit/test_di_container.py",
+        "unit/test_logging_system.py",
+        "unit/test_ruleset.py",
+        "unit/test_ui_imports.py"
+      ]
+    },
+    "integration_tests": {
+      "description": "Integration tests for component interaction",
+      "test_files": [
+        "integration/test_ui_integration.py",
+        "integration/test_pattern_system.py",
+        "integration/test_logging_integration.py",
+        "integration/test_conflict_resolution.py"
+      ]
+    },
+    "ui_tests": {
+      "description": "UI component and interaction tests",
+      "test_files": [
+        "test_ui.py",
+        "test_app.py"
+      ]
+    },
+    "manual_tests": {
+      "description": "Manual testing scenarios",
+      "test_files": [
+        "manual/test_visual_components.py",
+        "manual/test_user_workflows.py"
+      ]
+    }
+  },
+  "test_data": {
+    "patterns": [
+      {
+        "name": "Image Files",
+        "pattern": "*.{jpg,jpeg,png,gif,bmp,svg,webp}",
+        "description": "Match common image file formats"
+      },
+      {
+        "name": "Document Files", 
+        "pattern": "*.{pdf,doc,docx,txt,rtf,odt}",
+        "description": "Match document file formats"
+      },
+      {
+        "name": "Video Files",
+        "pattern": "*.{mp4,avi,mkv,mov,wmv,flv,webm}",
+        "description": "Match video file formats"
+      },
+      {
+        "name": "Audio Files",
+        "pattern": "*.{mp3,wav,flac,aac,ogg,wma}",
+        "description": "Match audio file formats"
+      },
+      {
+        "name": "Archive Files",
+        "pattern": "*.{zip,rar,7z,tar,gz,bz2}",
+        "description": "Match archive file formats"
+      }
+    ],
+    "rules": [
+      {
+        "name": "Organize Pictures",
+        "pattern": "Image Files",
+        "destination": "Pictures",
+        "priority": 10,
+        "enabled": true
+      },
+      {
+        "name": "Archive Documents",
+        "pattern": "Document Files", 
+        "destination": "Documents",
+        "priority": 8,
+        "enabled": true
+      },
+      {
+        "name": "Media to Videos",
+        "pattern": "Video Files",
+        "destination": "Videos",
+        "priority": 9,
+        "enabled": true
+      }
+    ],
+    "test_files": [
+      {
+        "name": "vacation_photo.jpg",
+        "size": 2048000,
+        "type": "image"
+      },
+      {
+        "name": "report.pdf",
+        "size": 512000,
+        "type": "document"
+      },
+      {
+        "name": "movie.mp4",
+        "size": 104857600,
+        "type": "video"
+      },
+      {
+        "name": "song.mp3",
+        "size": 4096000,
+        "type": "audio"
+      },
+      {
+        "name": "backup.zip",
+        "size": 20971520,
+        "type": "archive"
+      }
+    ]
+  },
+  "test_scenarios": {
+    "basic_pattern_matching": {
+      "description": "Test basic pattern matching functionality",
+      "steps": [
+        "Create pattern for image files",
+        "Test against various image files",
+        "Verify matches and non-matches"
+      ]
+    },
+    "rule_execution": {
+      "description": "Test rule execution workflow",
+      "steps": [
+        "Create pattern and rule",
+        "Execute rule on test files",
+        "Verify files moved to correct destination"
+      ]
+    },
+    "conflict_resolution": {
+      "description": "Test handling of file conflicts",
+      "steps": [
+        "Create files with same names in source and destination",
+        "Execute rule",
+        "Verify conflict resolution behavior"
+      ]
+    },
+    "theme_switching": {
+      "description": "Test UI theme switching",
+      "steps": [
+        "Start application in light mode",
+        "Switch to dark mode",
+        "Verify UI elements update correctly",
+        "Switch back to light mode"
+      ]
+    }
+  },
+  "configuration": {
+    "test_timeout": 30,
+    "mock_services": true,
+    "visual_tests": false,
+    "performance_tests": false,
+    "coverage_threshold": 80
+  }
+}

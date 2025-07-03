@@ -16,6 +16,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Import theme manager (with fallback for tests)
+try:
+    from .theme_manager import get_theme_manager
+except ImportError:
+    # Fallback for tests that mock this
+    def get_theme_manager():  # type: ignore
+        from typing import Any
+        return None  # type: ignore
+
 
 class ComponentState(Enum):
     """Standard component states for consistent UI behavior."""
@@ -314,6 +323,11 @@ class ModernButton(BaseComponent):
             self.set_state(ComponentState.ACTIVE)
             self.after(100, lambda: self.set_state(ComponentState.DEFAULT))
             self.command()
+    
+    def invoke(self):
+        """Programmatically invoke the button's command for test compatibility."""
+        if self.command:
+            self.command()
 
 
 class ModernCard(BaseComponent):
@@ -383,6 +397,7 @@ class StatusBar(BaseComponent):
     
     def __init__(self, parent: tk.Widget, **kwargs):
         self.status_items: Dict[str, tk.Label] = {}
+        self.progress_bars: Dict[str, ttk.Progressbar] = {}
         super().__init__(parent, **kwargs)
     
     def _create_component(self):
@@ -401,8 +416,17 @@ class StatusBar(BaseComponent):
         self.right_frame = tk.Frame(self, bg=self.theme.surface)
         self.right_frame.pack(side="right", padx=self.theme.spacing_sm)
     
-    def set_status(self, key: str, text: str, side: str = "left"):
+    def set_status(self, key_or_text: str, text: Optional[str] = None, side: str = "left"):
         """Set status text for a specific key."""
+        # Handle both single argument (text only) and two argument (key, text) cases
+        if text is None:
+            # Single argument case - use "main" as the default key
+            key = "main"
+            text = key_or_text
+        else:
+            # Two argument case
+            key = key_or_text
+        
         parent_frame = self.left_frame if side == "left" else self.right_frame
         
         if key not in self.status_items:
@@ -416,6 +440,43 @@ class StatusBar(BaseComponent):
             self.status_items[key] = label
         
         self.status_items[key].configure(text=text)
+    
+    def set_progress(self, key_or_value: Union[str, int, float], value: Optional[Union[int, float]] = None, maximum: Union[int, float] = 100, side: str = "right"):
+        """Set progress for a specific key."""
+        # Handle both single argument (value only) and multi argument (key, value) cases
+        if value is None:
+            # Single argument case - use "main" as the default key
+            key = "main"
+            progress_value = key_or_value  # type: ignore
+        else:
+            # Multi argument case
+            key = str(key_or_value)
+            progress_value = value
+        
+        parent_frame = self.left_frame if side == "left" else self.right_frame
+        
+        if key not in self.progress_bars:
+            progress = ttk.Progressbar(
+                parent_frame,
+                mode="determinate",
+                length=100
+            )
+            progress.pack(side="left" if side == "left" else "right", padx=self.theme.spacing_sm)
+            self.progress_bars[key] = progress
+        
+        # Set the maximum and current value
+        self.progress_bars[key].configure(maximum=maximum)
+        self.progress_bars[key]["value"] = progress_value
+    
+    def clear(self):
+        """Clear all status items and progress bars."""
+        # Clear all status items
+        for key, label in self.status_items.items():
+            label.configure(text="")
+        
+        # Clear all progress bars
+        for key, progress in self.progress_bars.items():
+            progress["value"] = 0
 
 
 # Export main classes

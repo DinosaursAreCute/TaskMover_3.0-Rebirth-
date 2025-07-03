@@ -197,6 +197,45 @@ class PatternSystem(BasePatternService):
             self._log_error(e, "create_pattern", expression=user_expression)
             raise PatternSystemError(f"Failed to create pattern: {e}")
     
+    def add_pattern(self, pattern: Pattern) -> Pattern:
+        """
+        Add an existing pattern to the system.
+        
+        Args:
+            pattern: The pattern to add
+            
+        Returns:
+            The added pattern
+            
+        Raises:
+            PatternSystemError: If the operation fails
+        """
+        try:
+            self._log_operation("add_pattern", pattern_id=str(pattern.id), name=pattern.name)
+            
+            if not self._initialized:
+                self.initialize()
+            
+            # Validate the pattern
+            if not self._validator:
+                raise PatternSystemError("Validator not initialized")
+            validation_result = self._validator.validate(pattern)
+            pattern.is_valid = validation_result.is_valid
+            pattern.validation_errors = validation_result.errors
+            
+            # Save to repository
+            if not self._repository:
+                raise PatternSystemError("Repository not initialized")
+            self._repository.save(pattern)
+            
+            self._logger.info(f"Added pattern: {pattern.name} ({pattern.id})")
+            
+            return pattern
+            
+        except Exception as e:
+            self._log_error(e, "add_pattern", pattern_id=str(pattern.id))
+            raise PatternSystemError(f"Failed to add pattern: {e}")
+    
     def get_pattern(self, pattern_id: Union[UUID, str]) -> Optional[Pattern]:
         """
         Retrieve a pattern by ID.
@@ -362,7 +401,7 @@ class PatternSystem(BasePatternService):
         except Exception as e:
             pattern_id = str(pattern.id) if isinstance(pattern, Pattern) else pattern
             self._log_error(e, "match_pattern", pattern_id=pattern_id)
-            return MatchResult([], len(file_paths), 0.0, errors=[str(e)])
+            return MatchResult(matched_files=[], total_files_checked=len(file_paths), execution_time_ms=0.0, errors=[str(e)])
     
     def match_single_file(self, 
                          pattern: Union[Pattern, str], 
@@ -371,20 +410,66 @@ class PatternSystem(BasePatternService):
         Check if a single file matches a pattern.
         
         Args:
-            pattern: Pattern object or expression string
-            file_path: File path to check
+            pattern: Pattern object or pattern string
+            file_path: Path to file to check
             
         Returns:
             True if file matches pattern
+            
+        Raises:
+            PatternSystemError: If the operation fails
         """
         try:
+            self._log_operation("match_single_file", 
+                              pattern_id=str(pattern.id) if isinstance(pattern, Pattern) else pattern,
+                              file_path=str(file_path))
+            
+            if not self._initialized:
+                self.initialize()
+            
+            # Convert to MatchResult and check if file is in results
             result = self.match_pattern(pattern, [file_path])
             return len(result.matched_files) > 0
             
         except Exception as e:
             pattern_id = str(pattern.id) if isinstance(pattern, Pattern) else pattern
-            self._log_error(e, "match_single_file", pattern_id=pattern_id)
+            self._log_error(e, "match_single_file", pattern_id=pattern_id, file_path=str(file_path))
             return False
+    
+    def match_files(self, file_paths: List[Path]) -> List[MatchResult]:
+        """
+        Match multiple files against all patterns in the system.
+        
+        Args:
+            file_paths: List of file paths to match
+            
+        Returns:
+            List of MatchResult objects for each matching pattern
+            
+        Raises:
+            PatternSystemError: If the operation fails
+        """
+        try:
+            self._log_operation("match_files", file_count=len(file_paths))
+            
+            if not self._initialized:
+                self.initialize()
+            
+            # Get all active patterns
+            patterns = self.list_patterns({"status": "active"})
+            results = []
+            
+            # Match each pattern against the files
+            for pattern in patterns:
+                result = self.match_pattern(pattern, file_paths)
+                if result.matched_files:  # Only include patterns that matched something
+                    results.append(result)
+            
+            return results
+            
+        except Exception as e:
+            self._log_error(e, "match_files", file_count=len(file_paths))
+            return []
     
     # Validation API
     

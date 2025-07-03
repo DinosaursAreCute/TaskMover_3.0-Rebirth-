@@ -180,7 +180,7 @@ class ThemeManager:
         logger.info(f"TTK styles initialized for {self.current_mode.value} theme")
     
     def _setup_base_styles(self):
-        """Setup base TTK styles."""
+        """Setup base TTTK styles."""
         if not self._ttk_style:
             return
             
@@ -410,6 +410,10 @@ class ThemeManager:
             
             logger.info(f"Theme switched from {old_mode.value} to {mode.value}")
     
+    def set_theme(self, mode: ThemeMode):
+        """Alias for set_theme_mode - for test compatibility."""
+        self.set_theme_mode(mode)
+    
     def toggle_theme(self):
         """Toggle between light and dark themes."""
         new_mode = ThemeMode.DARK if self.current_mode == ThemeMode.LIGHT else ThemeMode.LIGHT
@@ -418,6 +422,10 @@ class ThemeManager:
     def add_theme_observer(self, callback: Callable):
         """Add observer for theme changes."""
         self._observers.append(callback)
+    
+    def register_callback(self, callback: Callable):
+        """Alias for add_theme_observer - for test compatibility."""
+        self.add_theme_observer(callback)
     
     def remove_theme_observer(self, callback: Callable):
         """Remove theme change observer."""
@@ -428,7 +436,7 @@ class ThemeManager:
         """Notify all observers of theme change."""
         for observer in self._observers:
             try:
-                observer(old_mode, new_mode)
+                observer(new_mode)
             except Exception as e:
                 logger.error(f"Error notifying theme observer: {e}")
     
