@@ -21,6 +21,7 @@ from .input_components import SmartPatternInput
 from .rule_management_components import RuleManagementView
 from .execution_components import ExecutionView
 from .history_components import HistoryAndStatsView
+from .programming_courses_component import ProgrammingCoursesComponent
 
 # Import backend services
 from ..core.patterns import PatternSystem
@@ -60,6 +61,7 @@ class MainContentArea(BaseComponent):
         self._create_rulesets_view()
         self._create_execute_view()
         self._create_history_view()
+        self._create_courses_view()
         self._create_settings_view()
     
     def _create_dashboard_view(self):
@@ -275,6 +277,16 @@ class MainContentArea(BaseComponent):
         # History and statistics component
         history_stats = HistoryAndStatsView(history_frame)
         history_stats.pack(fill="both", expand=True)
+    
+    def _create_courses_view(self):
+        """Create programming courses view."""
+        courses_frame = tk.Frame(self.notebook, bg=get_theme_manager().get_current_tokens().colors["background"])
+        self.notebook.add(courses_frame, text="📚 Courses")
+        self.views["courses"] = courses_frame
+        
+        # Programming courses component
+        courses_component = ProgrammingCoursesComponent(courses_frame)
+        courses_component.pack(fill="both", expand=True)
     
     def _create_settings_view(self):
         """Create settings view."""
