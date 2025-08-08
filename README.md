@@ -20,6 +20,7 @@ TaskMover is an advanced file organization tool that uses intelligent pattern ma
 - 🎯 **Responsive Design**: Adaptive layouts for different screen sizes
 - ♿ **Full Accessibility**: WCAG compliant with keyboard navigation and screen reader support
 - 🌓 **Theme System**: Light/dark themes with customizable design tokens
+- 📚 **Educational Resources**: Curated collection of free interactive programming courses with search and filtering
 
 #### 🏗️ Backend System (COMPLETE)
 - 🧠 **Intelligent Pattern Parser**: Advanced parsing that translates user-friendly input to optimized queries
@@ -71,6 +72,7 @@ python -m pytest tests/unit/ -v        # Unit tests
 
 ### Core Documentation
 - **[User Guide](docs/USER_GUIDE.md)**: How to use TaskMover effectively
+- **[Programming Courses](docs/PROGRAMMING_COURSES.md)**: Guide to the free interactive programming courses feature
 - **[API Reference](docs/API_REFERENCE.md)**: Complete backend API documentation
 - **[Architecture Overview](docs/ARCHITECTURE.md)**: System design and architecture
 - **[Contributing Guide](docs/CONTRIBUTING.md)**: How to contribute to the project
@@ -146,6 +148,7 @@ taskmover/
 - **Conflict Resolution UI**: Interactive conflict resolution dialogs
 - **Theme System**: Customizable light/dark themes
 - **Keyboard Navigation**: Full keyboard accessibility support
+- **Educational Resources**: Access to curated free programming courses
 
 ### 🔄 Future Enhancements
 - **Visual Pattern Builder**: Drag-and-drop pattern construction
