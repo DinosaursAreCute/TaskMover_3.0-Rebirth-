@@ -98,7 +98,7 @@ class FileSystemBackend(IStorageBackend):
             with open(temp_path, 'w') as f:
                 json.dump(data, f, indent=2, default=str)
             
-            temp_path.rename(file_path)
+            temp_path.replace(file_path)
             
             self._logger.debug(f"Inserted entity {entity_id} into {table_name}")
             return entity_id
@@ -174,7 +174,7 @@ class FileSystemBackend(IStorageBackend):
             with open(temp_path, 'w') as f:
                 json.dump(existing_data, f, indent=2, default=str)
             
-            temp_path.rename(file_path)
+            temp_path.replace(file_path)
             
             self._logger.debug(f"Updated entity {entity_id} in {table_name}")
             return True
