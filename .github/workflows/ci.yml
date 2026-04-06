@@ -31,7 +31,7 @@ jobs:
 
     - name: Load cached venv
       id: cached-poetry-dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: .venv
         key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
@@ -62,14 +62,14 @@ jobs:
         poetry run pytest tests/performance --benchmark-only --benchmark-json=benchmark.json
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
 
     - name: Upload performance results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-results-${{ matrix.os }}-${{ matrix.python-version }}
         path: benchmark.json
@@ -92,12 +92,12 @@ jobs:
 
     - name: Run security checks
       run: |
-        poetry add --group dev safety bandit
-        poetry run safety check
-        poetry run bandit -r taskmover/ -f json -o bandit-report.json
+        pip install safety==3.7.0 bandit==1.9.4
+        safety check
+        bandit -r taskmover/ -f json -o bandit-report.json
 
     - name: Upload security results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-report
         path: bandit-report.json
@@ -118,11 +118,14 @@ jobs:
     - name: Install Poetry
       uses: snok/install-poetry@v1
 
+    - name: Install dependencies
+      run: poetry install --no-interaction
+
     - name: Build package
       run: poetry build
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: build-artifacts
         path: dist/
