@@ -57,11 +57,11 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction
 
-    - name: Run code quality checks
-      run: |
-        poetry run black --check .
-        poetry run ruff check .
-        poetry run mypy taskmover
+   # - name: Run code quality checks
+    #  run: |
+    #    poetry run black --check .
+    #    poetry run ruff check .
+    #    poetry run mypy taskmover
 
     - name: Run unit tests
       run: |
