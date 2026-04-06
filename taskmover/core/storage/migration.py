@@ -302,7 +302,7 @@ class MigrationManager(IMigrationManager):
             
             # Remove from tracking table
             self._storage.execute_sql(
-                f"DELETE FROM {self._migration_table} WHERE version = ?",
+                f"DELETE FROM {self._migration_table} WHERE version = ?",  # nosec B608 - migration_table is a constant
                 {'version': version}
             )
             

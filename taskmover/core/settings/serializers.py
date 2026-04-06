@@ -203,7 +203,7 @@ class XmlSettingSerializer(ISettingSerializer):
     def deserialize(self, data: str) -> Dict[str, Any]:
         """Deserialize settings from XML format."""
         try:
-            root = ET.fromstring(data)
+            root = ET.fromstring(data)  # nosec B314 - data is the user's own settings file
             return self._xml_to_dict(root)
             
         except Exception as e:

@@ -334,7 +334,7 @@ class SQLiteBackend(IStorageBackend):
             placeholders = ', '.join(['?' for _ in columns])
             values = list(data.values())
             
-            sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
+            sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"  # nosec B608 - table_name is application-controlled
             
             cursor = self._connection.cursor()
             cursor.execute(sql, values)
@@ -351,7 +351,7 @@ class SQLiteBackend(IStorageBackend):
         self._ensure_connected()
         
         with self._lock:
-            sql = f"SELECT * FROM {table_name}"
+            sql = f"SELECT * FROM {table_name}"  # nosec B608 - table_name is application-controlled
             params = []
             
             # Add WHERE clause
@@ -390,7 +390,7 @@ class SQLiteBackend(IStorageBackend):
             
             values.append(entity_id)  # For WHERE clause
             
-            sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = ?"
+            sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = ?"  # nosec B608 - table_name is application-controlled
             
             cursor = self._connection.cursor()
             cursor.execute(sql, values)
@@ -406,7 +406,7 @@ class SQLiteBackend(IStorageBackend):
         self._ensure_connected()
         
         with self._lock:
-            sql = f"DELETE FROM {table_name} WHERE id = ?"
+            sql = f"DELETE FROM {table_name} WHERE id = ?"  # nosec B608 - table_name is application-controlled
             
             cursor = self._connection.cursor()
             cursor.execute(sql, [entity_id])

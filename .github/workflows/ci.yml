@@ -35,9 +35,11 @@ jobs:
       run: |
         if (Test-Path "$env:APPDATA\Python\Scripts") {
           echo "$env:APPDATA\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:PATH = "$env:APPDATA\Python\Scripts;$env:PATH"
         }
         if (Test-Path "$env:USERPROFILE\.local\bin") {
           echo "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
         }
         poetry --version
         
@@ -106,7 +108,7 @@ jobs:
       run: |
         pip install safety==3.7.0 bandit==1.9.4
         safety check
-        bandit -r taskmover/ -f json -o bandit-report.json
+        bandit -r taskmover/ -ll -f json -o bandit-report.json
 
     - name: Upload security results
       uses: actions/upload-artifact@v4

@@ -401,7 +401,7 @@ class UnifiedPatternMatcher(BasePatternComponent, IPatternMatcher):
         files_data = ":".join(str(p) for p in sorted(file_paths))
         
         combined = f"{pattern_data}|{files_data}"
-        return hashlib.md5(combined.encode()).hexdigest()
+        return hashlib.md5(combined.encode(), usedforsecurity=False).hexdigest()
     
     def _get_cached_result(self, cache_key: str) -> Optional[MatchResult]:
         """Get cached result if available and valid."""
