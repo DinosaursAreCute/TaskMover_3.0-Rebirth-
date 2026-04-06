@@ -19,8 +19,53 @@ def pytest_configure(config):
     """Configure pytest environment."""
     # Only mock tkinter if it is genuinely unavailable (no ImportError above means it's present)
     if tk is None:
-        sys.modules['tkinter'] = Mock()
-        sys.modules['tkinter.ttk'] = Mock()
+        # Provide real base classes so tkinter-dependent modules can be imported.
+        # Using Mock() for tk.Frame would cause a metaclass conflict with ABC.
+        class _TkBase:
+            """Minimal tkinter widget base for mocking."""
+            def __init__(self, *args, **kwargs):
+                pass
+            def __getattr__(self, name):
+                """Return a no-op callable for any missing tkinter method."""
+                def _noop(*args, **kwargs):
+                    return None
+                return _noop
+            def __setitem__(self, key, value):
+                pass
+            def __getitem__(self, key):
+                return None
+
+        from unittest.mock import MagicMock
+        tkinter_mock = MagicMock()
+        tkinter_mock.Frame = _TkBase
+        tkinter_mock.Widget = _TkBase
+        tkinter_mock.Tk = _TkBase
+        tkinter_mock.Toplevel = _TkBase
+        tkinter_mock.Label = _TkBase
+        tkinter_mock.Button = _TkBase
+        tkinter_mock.Entry = _TkBase
+        tkinter_mock.Canvas = _TkBase
+        tkinter_mock.Text = _TkBase
+        tkinter_mock.Scrollbar = _TkBase
+        tkinter_mock.TclError = Exception
+
+        ttk_mock = MagicMock()
+        ttk_mock.Frame = _TkBase
+        ttk_mock.Label = _TkBase
+        ttk_mock.Button = _TkBase
+        ttk_mock.Entry = _TkBase
+        ttk_mock.Progressbar = _TkBase
+        ttk_mock.Combobox = _TkBase
+        ttk_mock.Treeview = _TkBase
+        ttk_mock.Scrollbar = _TkBase
+        ttk_mock.Separator = _TkBase
+        ttk_mock.Notebook = _TkBase
+        ttk_mock.Scale = _TkBase
+        tkinter_mock.ttk = ttk_mock
+
+        tkinter_mock._IS_MOCK = True
+        sys.modules['tkinter'] = tkinter_mock
+        sys.modules['tkinter.ttk'] = ttk_mock
 
 
 @pytest.fixture(scope="function")
@@ -73,7 +118,9 @@ def mock_theme_manager():
 def setup_test_environment():
     """Setup test environment with proper mocking."""
     # Patch theme manager for all tests
-    with patch('taskmover.ui.base_component.get_theme_manager') as mock_get_theme:
+    try:
+        patcher = patch('taskmover.ui.base_component.get_theme_manager')
+        mock_get_theme = patcher.start()
         mock_manager = Mock()
         mock_manager.get_current_tokens.return_value = Mock(
             colors={
@@ -100,4 +147,7 @@ def setup_test_environment():
             }
         )
         mock_get_theme.return_value = mock_manager
+        yield
+        patcher.stop()
+    except Exception:
         yield

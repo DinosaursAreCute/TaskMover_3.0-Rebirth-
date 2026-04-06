@@ -17,6 +17,11 @@ import time
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+# Skip this entire module when tkinter is not a real installation
+if getattr(tk, '_IS_MOCK', False):
+    import pytest
+    pytest.skip('Tkinter not available', allow_module_level=True)
+
 
 class TestUIComponentIntegration(unittest.TestCase):
     """Test UI component integration."""
