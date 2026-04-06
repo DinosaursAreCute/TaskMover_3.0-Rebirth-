@@ -8,15 +8,17 @@ Pytest configuration and fixtures for handling test environment setup.
 import pytest
 import os
 import sys
-import tkinter as tk
+try:
+    import tkinter as tk
+except ImportError:
+    tk = None  # type: ignore[assignment]
 from unittest.mock import Mock, patch
 
 
 def pytest_configure(config):
     """Configure pytest environment."""
-    # Handle headless environment for Tkinter tests
-    if 'CI' in os.environ or 'HEADLESS' in os.environ:
-        # Mock tkinter for headless environments
+    # Only mock tkinter if it is genuinely unavailable (no ImportError above means it's present)
+    if tk is None:
         sys.modules['tkinter'] = Mock()
         sys.modules['tkinter.ttk'] = Mock()
 

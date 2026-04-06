@@ -11,11 +11,9 @@ __author__ = "TaskMover Team"
 __description__ = "Intelligent file organization system with pattern-based rules"
 
 from .core.exceptions import TaskMoverError, PatternError, RuleError
-from .ui.main_application import TaskMoverApplication
 
 __all__ = [
     "TaskMoverError",
-    "PatternError", 
+    "PatternError",
     "RuleError",
-    "TaskMoverApplication",
 ]
