@@ -265,7 +265,7 @@ class FileCache(ICacheLevel):
             try:
                 import pickle
                 with open(file_path, 'rb') as f:
-                    entry = pickle.load(f)
+                    entry = pickle.load(f)  # nosec B301 - loading application's own cache files
                 
                 # Check if expired
                 if entry.is_expired:
@@ -353,7 +353,7 @@ class FileCache(ICacheLevel):
         """Get file path for cache key."""
         import hashlib
         # Use hash to handle special characters in keys
-        key_hash = hashlib.md5(key.encode()).hexdigest()
+        key_hash = hashlib.md5(key.encode(), usedforsecurity=False).hexdigest()
         return self._cache_dir / f"{key_hash}.cache"
     
     def _cleanup_if_needed(self) -> None:
