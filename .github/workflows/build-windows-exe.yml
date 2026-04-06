@@ -28,7 +28,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run unit tests
-        run: pytest tests/unit -v --cov=taskmover --cov-report=term-missing
+        run: python -m pytest tests/unit -v --cov=taskmover --cov-report=term-missing
 
   build-windows-exe:
     needs: [test]
