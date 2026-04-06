@@ -118,6 +118,7 @@ def mock_theme_manager():
 def setup_test_environment():
     """Setup test environment with proper mocking."""
     # Patch theme manager for all tests
+    patcher = None
     try:
         patcher = patch('taskmover.ui.base_component.get_theme_manager')
         mock_get_theme = patcher.start()
@@ -148,6 +149,11 @@ def setup_test_environment():
         )
         mock_get_theme.return_value = mock_manager
         yield
-        patcher.stop()
     except Exception:
         yield
+    finally:
+        if patcher is not None:
+            try:
+                patcher.stop()
+            except Exception:
+                pass
