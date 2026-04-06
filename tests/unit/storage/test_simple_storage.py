@@ -11,36 +11,38 @@ from pathlib import Path
 from datetime import datetime
 from uuid import uuid4
 
-# Add the path to import components
+# Setup proper path for imports
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../'))
+import types
 
-# Import individual components to avoid circular dependencies
-import importlib.util
+_project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
-def import_module_from_path(name, file_path):
-    """Import a module from a file path."""
-    spec = importlib.util.spec_from_file_location(name, file_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+# Pre-register taskmover as a namespace package to avoid executing taskmover/__init__.py
+# which imports tkinter UI components that may not be available in CI
+if 'taskmover' not in sys.modules:
+    _taskmover_mod = types.ModuleType('taskmover')
+    _taskmover_mod.__path__ = [os.path.join(_project_root, 'taskmover')]
+    _taskmover_mod.__package__ = 'taskmover'
+    sys.modules['taskmover'] = _taskmover_mod
+
+from taskmover.core.storage import StorageConfig, StorageBackend
+from taskmover.core.storage.backends import MemoryBackend, FileSystemBackend
+from taskmover.core.storage.cache import LRUCache
+
 
 def test_memory_backend():
     """Test the memory backend directly."""
     print("Testing Memory Backend...")
-    
-    # Import the backend directly
-    base_path = os.path.join(os.path.dirname(__file__), '../../../taskmover/core/storage')
-    backends = import_module_from_path("backends", os.path.join(base_path, "backends.py"))
-    storage_init = import_module_from_path("storage_init", os.path.join(base_path, "__init__.py"))
-    
+
     # Create backend
-    backend = backends.MemoryBackend()
-    
+    backend = MemoryBackend()
+
     # Create config
-    config = storage_init.StorageConfig(
-        backend=storage_init.StorageBackend.MEMORY,
+    config = StorageConfig(
+        backend=StorageBackend.MEMORY,
         connection_string=""
     )
     
@@ -88,17 +90,12 @@ def test_file_system_backend():
     print("\nTesting File System Backend...")
     
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Import components
-        base_path = os.path.join(os.path.dirname(__file__), '../../../taskmover/core/storage')
-        backends = import_module_from_path("backends", os.path.join(base_path, "backends.py"))
-        storage_init = import_module_from_path("storage_init", os.path.join(base_path, "__init__.py"))
-        
         # Create backend
-        backend = backends.FileSystemBackend()
+        backend = FileSystemBackend()
         
         # Create config
-        config = storage_init.StorageConfig(
-            backend=storage_init.StorageBackend.FILE_SYSTEM,
+        config = StorageConfig(
+            backend=StorageBackend.FILE_SYSTEM,
             connection_string=temp_dir
         )
         
@@ -144,12 +141,8 @@ def test_lru_cache():
     """Test the LRU cache implementation."""
     print("\nTesting LRU Cache...")
     
-    # Import cache module
-    base_path = os.path.join(os.path.dirname(__file__), '../../../taskmover/core/storage')
-    cache_module = import_module_from_path("cache", os.path.join(base_path, "cache.py"))
-    
     # Create cache
-    cache = cache_module.LRUCache(max_size=3)
+    cache = LRUCache(max_size=3)
     
     # Test basic operations
     cache.set("key1", "value1")

@@ -12,72 +12,31 @@ from pathlib import Path
 from datetime import datetime
 from uuid import uuid4
 
-# Import storage framework components directly without going through main package
+# Setup proper path for imports
 import sys
 import os
-import importlib.util
+import types
 
-# Add the path and import components directly
-base_path = os.path.join(os.path.dirname(__file__), '../../../taskmover/core/storage')
+_project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
-# Import the storage module components
-spec = importlib.util.spec_from_file_location("storage_init", os.path.join(base_path, "__init__.py"))
-storage_module = importlib.util.module_from_spec(spec)
+# Pre-register taskmover as a namespace package to avoid executing taskmover/__init__.py
+# which imports tkinter UI components that may not be available in CI
+if 'taskmover' not in sys.modules:
+    _taskmover_mod = types.ModuleType('taskmover')
+    _taskmover_mod.__path__ = [os.path.join(_project_root, 'taskmover')]
+    _taskmover_mod.__package__ = 'taskmover'
+    sys.modules['taskmover'] = _taskmover_mod
 
-# Import exceptions
-spec_exc = importlib.util.spec_from_file_location("exceptions", os.path.join(os.path.dirname(__file__), '../../../taskmover/core/exceptions.py'))
-exceptions_module = importlib.util.module_from_spec(spec_exc)
-spec_exc.loader.exec_module(exceptions_module)
-StorageException = exceptions_module.StorageException
-
-# Load storage components
-spec.loader.exec_module(storage_module)
-
-# Extract what we need
-StorageBackend = storage_module.StorageBackend
-StorageConfig = storage_module.StorageConfig
-IEntity = storage_module.IEntity
-TransactionState = storage_module.TransactionState
-
-# Import backends
-spec_backends = importlib.util.spec_from_file_location("backends", os.path.join(base_path, "backends.py"))
-backends_module = importlib.util.module_from_spec(spec_backends)
-spec_backends.loader.exec_module(backends_module)
-
-FileSystemBackend = backends_module.FileSystemBackend
-SQLiteBackend = backends_module.SQLiteBackend  
-MemoryBackend = backends_module.MemoryBackend
-
-# Import repository
-spec_repo = importlib.util.spec_from_file_location("repository", os.path.join(base_path, "repository.py"))
-repo_module = importlib.util.module_from_spec(spec_repo)
-spec_repo.loader.exec_module(repo_module)
-
-BaseRepository = repo_module.BaseRepository
-
-# Import transaction
-spec_tx = importlib.util.spec_from_file_location("transaction", os.path.join(base_path, "transaction.py"))
-tx_module = importlib.util.module_from_spec(spec_tx)
-spec_tx.loader.exec_module(tx_module)
-
-Transaction = tx_module.Transaction
-TransactionManager = tx_module.TransactionManager
-
-# Import migration
-spec_migration = importlib.util.spec_from_file_location("migration", os.path.join(base_path, "migration.py"))
-migration_module = importlib.util.module_from_spec(spec_migration)
-spec_migration.loader.exec_module(migration_module)
-
-MigrationManager = migration_module.MigrationManager
-CreateTableMigration = migration_module.CreateTableMigration
-
-# Import cache
-spec_cache = importlib.util.spec_from_file_location("cache", os.path.join(base_path, "cache.py"))
-cache_module = importlib.util.module_from_spec(spec_cache)
-spec_cache.loader.exec_module(cache_module)
-
-LRUCache = cache_module.LRUCache
-MultiLevelCacheManager = cache_module.MultiLevelCacheManager
+from taskmover.core.exceptions import StorageException
+from taskmover.core.storage import (
+    StorageBackend, StorageConfig, IEntity, TransactionState)
+from taskmover.core.storage.backends import FileSystemBackend, SQLiteBackend, MemoryBackend
+from taskmover.core.storage.repository import BaseRepository
+from taskmover.core.storage.transaction import Transaction, TransactionManager
+from taskmover.core.storage.migration import MigrationManager, CreateTableMigration
+from taskmover.core.storage.cache import LRUCache, MultiLevelCacheManager
 
 
 class TestEntity(IEntity):

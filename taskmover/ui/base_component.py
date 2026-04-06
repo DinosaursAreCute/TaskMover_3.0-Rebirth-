@@ -9,7 +9,6 @@ accessibility features, and consistent behavior patterns.
 import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Any, Optional, Callable, Union, List, Literal
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -92,7 +91,7 @@ class ComponentTheme:
     font_size_display: int = 32
 
 
-class BaseComponent(ABC, tk.Frame):
+class BaseComponent(tk.Frame):
     """
     Base class for all UI components providing consistent behavior,
     accessibility features, and modern design patterns.
@@ -139,10 +138,9 @@ class BaseComponent(ABC, tk.Frame):
         # Make component focusable
         self.focus_set()
     
-    @abstractmethod
     def _create_component(self):
         """Create the component's UI elements. Must be implemented by subclasses."""
-        pass
+        raise NotImplementedError(f"{self.__class__.__name__} must implement _create_component()")
     
     def _on_focus_in(self, event):
         """Handle focus gained."""
